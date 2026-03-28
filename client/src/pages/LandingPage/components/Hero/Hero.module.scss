@@ -1,0 +1,43 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.hero {
+  position: relative;
+  z-index: 1;
+  padding: 6rem 0 4rem;
+  @include flex-center;
+  text-align: center;
+}
+
+.heroContent {
+  max-width: 800px;
+  padding: 0 $space-6;
+}
+
+.heroButtons {
+  margin-top: $space-10;
+  @include flex-center;
+  gap: $space-4;
+  flex-wrap: wrap;
+}
+
+.formats {
+  margin-top: $space-12;
+  @include flex-col-center;
+  gap: $space-3;
+}
+
+.formatBadges {
+  @include flex-center;
+  gap: $space-3;
+}
+
+.badgeFormat {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  padding: $space-1 $space-3;
+  border-radius: $radius-sm;
+  font-family: $font-mono;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}

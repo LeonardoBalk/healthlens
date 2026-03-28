@@ -1,0 +1,70 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// ─── Utility Classes ──────────────────────────────────────────────────────────
+
+// Layout
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 $space-6;
+
+  @include lg {
+    padding: 0 $space-8;
+  }
+}
+
+.flex { display: flex; }
+.flex-col { @include flex-col; }
+.flex-center { @include flex-center; }
+.flex-between { @include flex-between; }
+.gap-2 { gap: $space-2; }
+.gap-3 { gap: $space-3; }
+.gap-4 { gap: $space-4; }
+.gap-6 { gap: $space-6; }
+.gap-8 { gap: $space-8; }
+
+// Spacing
+.mt-4  { margin-top: $space-4; }
+.mt-6  { margin-top: $space-6; }
+.mt-8  { margin-top: $space-8; }
+.mb-4  { margin-bottom: $space-4; }
+.mb-6  { margin-bottom: $space-6; }
+
+// Text utilities
+.text-muted   { color: $color-text-muted; }
+.text-subtle  { color: $color-text-subtle; }
+.text-primary { color: $color-primary; }
+.text-accent  { color: $color-accent; }
+.text-success { color: $color-success; }
+.text-danger  { color: $color-danger; }
+.text-warning { color: $color-warning; }
+
+.text-sm  { font-size: 0.875rem; }
+.text-xs  { font-size: 0.75rem; }
+.text-lg  { font-size: 1.125rem; }
+.text-xl  { font-size: 1.25rem; }
+
+.font-mono   { font-family: $font-mono; }
+.font-medium { font-weight: 500; }
+.font-bold   { font-weight: 700; }
+.truncate    { @include truncate; }
+
+// Gradient text
+.gradient-text {
+  @include gradient-text;
+}
+
+// Visibility
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

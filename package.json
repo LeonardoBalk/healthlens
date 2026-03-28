@@ -1,0 +1,15 @@
+{
+  "name": "healthlens",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names \"client,server,processing\" --prefix-colors \"cyan,green,magenta\" \"pnpm --filter client dev\" \"pnpm --filter server dev\" \"cd processing && .\\\\venv\\\\Scripts\\\\uvicorn main:app --reload --port 8000\"",
+    "dev:client": "pnpm --filter client dev",
+    "dev:server": "pnpm --filter server dev",
+    "dev:processing": "cd processing && .\\venv\\Scripts\\uvicorn main:app --reload --port 8000",
+    "install:all": "pnpm install && cd processing && .\\venv\\Scripts\\pip install -r requirements.txt"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

@@ -1,0 +1,80 @@
+@use 'variables' as *;
+
+// ─── Mixins ──────────────────────────────────────────────────────────────────
+
+// Responsive
+@mixin sm { @media (min-width: #{$bp-sm}) { @content; } }
+@mixin md { @media (min-width: #{$bp-md}) { @content; } }
+@mixin lg { @media (min-width: #{$bp-lg}) { @content; } }
+@mixin xl { @media (min-width: #{$bp-xl}) { @content; } }
+@mixin \2xl { @media (min-width: #{$bp-2xl}) { @content; } }
+
+// Glassmorphism card
+@mixin glass($blur: 12px, $bg: rgba(19, 25, 38, 0.7)) {
+  background: $bg;
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+}
+
+// Flex helpers
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+// Text truncate
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Focus ring
+@mixin focus-ring {
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
+// Gradient text
+@mixin gradient-text($from: $color-primary, $to: $color-accent) {
+  background: linear-gradient(135deg, $from, $to);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// Hover glow
+@mixin hover-glow($color: $color-primary-glow) {
+  transition: box-shadow $transition-base, transform $transition-base;
+  &:hover {
+    box-shadow: 0 0 20px $color;
+    transform: translateY(-2px);
+  }
+}
+
+// Scrollbar custom
+@mixin custom-scrollbar {
+  &::-webkit-scrollbar { width: 6px; height: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: $color-surface;
+    border-radius: $radius-full;
+    &:hover { background: $color-border-strong; }
+  }
+}

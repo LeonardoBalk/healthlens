@@ -1,0 +1,6 @@
+// ─── Main SCSS Entry Point ────────────────────────────────────────────────────
+// Import order matters: variables → mixins → reset → utilities
+@use 'styles/variables' as *;
+@use 'styles/mixins' as *;
+@use 'styles/reset';
+@use 'styles/utilities';

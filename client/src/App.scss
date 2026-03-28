@@ -1,0 +1,7 @@
+@use '@styles/variables' as *;
+@use '@styles/mixins' as *;
+
+.app {
+  min-height: 100vh;
+  @include flex-col;
+}

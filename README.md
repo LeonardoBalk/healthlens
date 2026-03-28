@@ -86,7 +86,7 @@ GEMINI_API_KEY=
 
 ## Autores
 
-- **Leonardo Balk** — [github.com/leobalk](https://github.com/leonardobalk)
-- **João Henrique Scherer Wolski** — [[github.com/joaowolski](https://github.com/joaohsw)]
+- **Leonardo Balk** — [@leonardobalk](https://github.com/leonardobalk)
+- **João Henrique Scherer Wolski** — [@joaohsw](https://github.com/joaohsw)
 
 Projeto de Software I — Sistemas de Informação, UFSM (2026/1)

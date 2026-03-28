@@ -1,24 +1,35 @@
-@use 'variables' as *;
+@use "variables" as *;
 
 // ─── Mixins ──────────────────────────────────────────────────────────────────
 
-// Responsive
-@mixin sm { @media (min-width: #{$bp-sm}) { @content; } }
-@mixin md { @media (min-width: #{$bp-md}) { @content; } }
-@mixin lg { @media (min-width: #{$bp-lg}) { @content; } }
-@mixin xl { @media (min-width: #{$bp-xl}) { @content; } }
-@mixin \2xl { @media (min-width: #{$bp-2xl}) { @content; } }
-
-// Glassmorphism card
-@mixin glass($blur: 12px, $bg: rgba(19, 25, 38, 0.7)) {
-  background: $bg;
-  backdrop-filter: blur($blur);
-  -webkit-backdrop-filter: blur($blur);
-  border: 1px solid $color-border;
-  border-radius: $radius-lg;
+// ── Responsive ────────────────────────────────────────────────────────────────
+@mixin sm {
+  @media (min-width: #{$bp-sm}) {
+    @content;
+  }
+}
+@mixin md {
+  @media (min-width: #{$bp-md}) {
+    @content;
+  }
+}
+@mixin lg {
+  @media (min-width: #{$bp-lg}) {
+    @content;
+  }
+}
+@mixin xl {
+  @media (min-width: #{$bp-xl}) {
+    @content;
+  }
+}
+@mixin xxl {
+  @media (min-width: #{$bp-2xl}) {
+    @content;
+  }
 }
 
-// Flex helpers
+// ── Layout ────────────────────────────────────────────────────────────────────
 @mixin flex-center {
   display: flex;
   align-items: center;
@@ -36,45 +47,171 @@
   flex-direction: column;
 }
 
-// Text truncate
-@mixin truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@mixin flex-col-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-// Focus ring
-@mixin focus-ring {
-  &:focus-visible {
-    outline: 2px solid $color-primary;
-    outline-offset: 2px;
-  }
+// ── Glassmorphism ─────────────────────────────────────────────────────────────
+@mixin glass($blur: 16px, $bg: rgba(24, 24, 27, 0.75)) {
+  background: $bg;
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid $color-border;
 }
 
-// Gradient text
-@mixin gradient-text($from: $color-primary, $to: $color-accent) {
+// ── Gradients ─────────────────────────────────────────────────────────────────
+@mixin gradient-text($from: $color-primary, $to: $color-primary-light) {
   background: linear-gradient(135deg, $from, $to);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-// Hover glow
-@mixin hover-glow($color: $color-primary-glow) {
-  transition: box-shadow $transition-base, transform $transition-base;
+@mixin gradient-primary {
+  background: linear-gradient(135deg, $color-primary-dark, $color-primary, $color-primary-light);
+}
+
+// ── Glow effects ──────────────────────────────────────────────────────────────
+@mixin glow($color: $color-primary-glow, $size: 20px) {
+  box-shadow: 0 0 $size $color;
+}
+
+@mixin hover-lift($glow: null) {
+  transition:
+    transform $transition-base,
+    box-shadow $transition-base;
   &:hover {
-    box-shadow: 0 0 20px $color;
     transform: translateY(-2px);
+    @if $glow {
+      box-shadow: 0 8px 24px $glow;
+    }
+  }
+  &:active {
+    transform: translateY(0);
   }
 }
 
-// Scrollbar custom
+// ── Badges de severidade ──────────────────────────────────────────────────────
+@mixin badge-base {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: $space-1 $space-2;
+  border-radius: $radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+@mixin badge-critical {
+  @include badge-base;
+  background: rgba(255, 45, 85, 0.15);
+  color: $color-primary-light;
+  border: 1px solid rgba(255, 45, 85, 0.3);
+}
+
+@mixin badge-warning {
+  @include badge-base;
+  background: rgba(255, 159, 10, 0.15);
+  color: $color-warning;
+  border: 1px solid rgba(255, 159, 10, 0.3);
+}
+
+@mixin badge-success {
+  @include badge-base;
+  background: rgba(48, 209, 88, 0.15);
+  color: $color-success;
+  border: 1px solid rgba(48, 209, 88, 0.3);
+}
+
+@mixin badge-info {
+  @include badge-base;
+  background: rgba(10, 132, 255, 0.15);
+  color: $color-info;
+  border: 1px solid rgba(10, 132, 255, 0.3);
+}
+
+@mixin badge-neutral {
+  @include badge-base;
+  background: rgba(161, 161, 170, 0.1);
+  color: $color-text-secondary;
+  border: 1px solid $color-border;
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+@mixin card($padding: $space-6) {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $radius-xl;
+  padding: $padding;
+}
+
+@mixin card-hover {
+  @include card;
+  transition:
+    border-color $transition-base,
+    box-shadow $transition-base,
+    transform $transition-base;
+  &:hover {
+    border-color: $color-border-strong;
+    box-shadow: $shadow-md;
+    transform: translateY(-1px);
+  }
+}
+
+// ── Tipografia ────────────────────────────────────────────────────────────────
+@mixin heading-1 {
+  font-size: clamp(#{$font-size-3xl}, 5vw, #{$font-size-5xl});
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+  color: $color-text-primary;
+}
+
+@mixin heading-2 {
+  font-size: clamp(#{$font-size-2xl}, 3vw, #{$font-size-4xl});
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-tight;
+  color: $color-text-primary;
+}
+
+@mixin body-text {
+  font-size: $font-size-base;
+  line-height: $line-height-relaxed;
+  color: $color-text-secondary;
+}
+
+// ── Utilitários ───────────────────────────────────────────────────────────────
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin focus-ring($color: $color-primary) {
+  &:focus-visible {
+    outline: 2px solid $color;
+    outline-offset: 2px;
+    border-radius: $radius-sm;
+  }
+}
+
 @mixin custom-scrollbar {
-  &::-webkit-scrollbar { width: 6px; height: 6px; }
-  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
   &::-webkit-scrollbar-thumb {
-    background: $color-surface;
+    background: $color-border-strong;
     border-radius: $radius-full;
-    &:hover { background: $color-border-strong; }
+    &:hover {
+      background: $color-text-muted;
+    }
   }
 }

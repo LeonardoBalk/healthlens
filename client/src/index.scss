@@ -1,6 +1,7 @@
-// ─── Main SCSS Entry Point ────────────────────────────────────────────────────
-// Import order matters: variables → mixins → reset → utilities
-@use 'styles/variables' as *;
-@use 'styles/mixins' as *;
-@use 'styles/reset';
-@use 'styles/utilities';
+// ─── HealthLens — SCSS Entry Point ───────────────────────────────────────────
+// Ordem: variables → mixins → theme (CSS vars) → reset → utilities
+@use "styles/variables" as *;
+@use "styles/mixins" as *;
+@use "styles/theme";
+@use "styles/reset";
+@use "styles/utilities";

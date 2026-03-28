@@ -1,0 +1,59 @@
+@use "variables" as *;
+
+// ─── CSS Custom Properties (tema runtime) ─────────────────────────────────────
+// Estas vars ficam disponíveis para qualquer componente via var(--color-*)
+// Dark mode é o padrão — adicionar .light-mode no body para versão clara futura
+
+:root {
+  // Background
+  --color-background: #{$color-background};
+  --color-surface: #{$color-surface};
+  --color-surface-2: #{$color-surface-2};
+  --color-border: #{$color-border};
+  --color-border-strong: #{$color-border-strong};
+
+  // Primary
+  --color-primary: #{$color-primary};
+  --color-primary-dark: #{$color-primary-dark};
+  --color-primary-light: #{$color-primary-light};
+  --color-primary-glow: #{$color-primary-glow};
+
+  // Semânticas
+  --color-warning: #{$color-warning};
+  --color-warning-glow: #{$color-warning-glow};
+  --color-success: #{$color-success};
+  --color-success-glow: #{$color-success-glow};
+  --color-danger: #{$color-danger};
+  --color-danger-glow: #{$color-danger-glow};
+  --color-info: #{$color-info};
+  --color-info-glow: #{$color-info-glow};
+
+  // Texto
+  --color-text-primary: #{$color-text-primary};
+  --color-text-secondary: #{$color-text-secondary};
+  --color-text-muted: #{$color-text-muted};
+
+  // Tipografia
+  --font-sans: #{$font-sans};
+  --font-mono: #{$font-mono};
+
+  // Radius
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-xl: #{$radius-xl};
+  --radius-2xl: #{$radius-2xl};
+  --radius-full: #{$radius-full};
+
+  // Shadows
+  --shadow-sm: #{$shadow-sm};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
+}
+
+// Tema claro (futuro — basta adicionar class="light" no <html>)
+// :root.light {
+//   --color-background: #FFFFFF;
+//   --color-surface:    #F4F4F5;
+//   ...
+// }

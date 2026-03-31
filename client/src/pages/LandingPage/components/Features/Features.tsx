@@ -5,8 +5,7 @@ export function Features() {
   return (
     <section className={styles.featuresSection} id="features">
       <div className="container">
-        <h2 className="text-center mb-12">Como analisamos seus dados</h2>
-        <br></br>
+        <h2 className="text-center mb-8">Como analisamos seus dados</h2>
 
         <div className="grid-3">
           <div className={styles.featureCard}>

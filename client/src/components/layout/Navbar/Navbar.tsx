@@ -9,16 +9,12 @@ export function Navbar() {
         <div className={styles.logo}>
           <Logo size={32} />
           <span style={{ marginLeft: '4px' }}>
-            <span className="font-bold text-xl" style={{ color: '#FAFAFA' }}>
-              Health
-            </span>
-            <span className="font-bold text-xl" style={{ color: '#FF2D55' }}>
-              Lens
-            </span>
+            <span className="font-bold text-xl text-primary">Health</span>
+            <span className="font-bold text-xl text-accent">Lens</span>
           </span>
         </div>
 
-        <nav className={styles.navLinks}></nav>
+        <nav className={styles.navLinks} aria-label="Navegação principal"></nav>
 
         <div className={styles.navActions}>
           <Button size="sm">Começar</Button>

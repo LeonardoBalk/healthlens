@@ -5,6 +5,9 @@ interface LogoProps extends React.SVGProps<SVGSVGElement> {
 }
 
 export function Logo({ size = 32, className, ...props }: LogoProps) {
+  const gradId = React.useId()
+  const maskId = React.useId()
+
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -15,11 +18,11 @@ export function Logo({ size = 32, className, ...props }: LogoProps) {
       {...props}
     >
       <defs>
-        <linearGradient id="heartGrad" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#FF2D55" />
           <stop offset="100%" stopColor="#FF6482" />
         </linearGradient>
-        <mask id="pulseMask">
+        <mask id={maskId}>
           <rect width="200" height="170" fill="white" />
           <polyline
             points="0,86 36,86 52,58 72,114 86,70 96,94 108,82 126,86 200,86"
@@ -33,8 +36,8 @@ export function Logo({ size = 32, className, ...props }: LogoProps) {
       </defs>
       <path
         d="M100,160 C100,160 4,96 4,42 C4,18 22,0 46,0 C66,0 84,12 100,32 C116,12 134,0 154,0 C178,0 196,18 196,42 C196,96 100,160 100,160Z"
-        fill="url(#heartGrad)"
-        mask="url(#pulseMask)"
+        fill={`url(#${gradId})`}
+        mask={`url(#${maskId})`}
       />
     </svg>
   )

@@ -1,17 +1,23 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Layout from './components/Layout'
+import OverviewPage from './pages/OverviewPage'
+import SeriesPage from './pages/SeriesPage'
+import ChartsPage from './pages/ChartsPage'
+import ReportsPage from './pages/ReportsPage'
 import './App.scss'
 
 function App() {
   return (
-    <div className="app">
-      <main className="flex-center" style={{ flex: 1 }}>
-        <div style={{ textAlign: 'center' }}>
-          <h1 className="gradient-text">HealthLens</h1>
-          <p className="text-muted mt-4">
-            A estrutura do monorepo está pronta. Comece a construir.
-          </p>
-        </div>
-      </main>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<OverviewPage />} />
+          <Route path="series" element={<SeriesPage />} />
+          <Route path="charts" element={<ChartsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
 

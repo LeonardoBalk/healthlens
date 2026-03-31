@@ -14,8 +14,12 @@ export function Navbar() {
         <div className={styles.logo}>
           <Logo size={32} />
           <span style={{ marginLeft: '4px' }}>
-            <span className="font-bold text-xl text-primary">Health</span>
-            <span className="font-bold text-xl text-accent">Lens</span>
+            <span className="font-bold text-xl" style={{ color: 'var(--color-text-primary)' }}>
+              Health
+            </span>
+            <span className="font-bold text-xl" style={{ color: 'var(--color-primary)' }}>
+              Lens
+            </span>
           </span>
         </div>
 

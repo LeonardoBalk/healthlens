@@ -3,12 +3,12 @@
 
 .featuresSection {
   padding: 6rem 0;
-  background: $color-surface-2;
-  border-top: 1px solid $color-border;
+  background: var(--color-surface-2);
+  border-top: 1px solid var(--color-border);
 }
 
 .featureCard {
-  @include card;
+  @include card(var(--space-8));
   @include flex-col;
   @include hover-lift;
   height: 100%;
@@ -18,7 +18,7 @@
   width: 48px;
   height: 48px;
   border-radius: $radius-md;
-  background: rgba(255, 45, 85, 0.1);
+  background: var(--color-primary-glow);
   @include flex-center;
-  border: 1px solid rgba(255, 45, 85, 0.2);
+  border: 1px solid var(--color-primary-glow);
 }

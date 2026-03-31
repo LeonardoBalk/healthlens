@@ -13,16 +13,16 @@
   @include card;
   padding: 0;
   overflow: hidden;
-  background: $color-surface;
-  border: 1px solid $color-border-strong;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 40px rgba(255, 45, 85, 0.1);
+    0 20px 40px -10px rgba(0, 0, 0, 0.1),
+    0 0 30px var(--color-primary-glow);
 }
 
 .mockupHeader {
-  background: $color-surface-2;
-  border-bottom: 1px solid $color-border;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
   padding: $space-3 $space-4;
   @include flex-center;
   position: relative;
@@ -54,7 +54,7 @@
 .mockupTitle {
   font-family: $font-mono;
   font-size: $font-size-sm;
-  color: $color-text-muted;
+  color: var(--color-text-muted);
 }
 
 .mockupBody {
@@ -64,7 +64,7 @@
 
 .mockupSidebar {
   width: 60px;
-  border-right: 1px solid $color-border;
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -81,7 +81,7 @@
 .fakeItem {
   height: 24px;
   border-radius: $radius-sm;
-  background: $color-surface-2;
+  background: var(--color-surface-2);
   width: 24px;
 
   @include md {
@@ -92,7 +92,7 @@
 .fakeItemActive {
   @extend .fakeItem;
   background: rgba(255, 45, 85, 0.1);
-  border-left: 2px solid $color-primary;
+  border-left: 2px solid var(--color-primary);
 }
 
 .mockupContent {
@@ -101,7 +101,7 @@
   display: flex;
   flex-direction: column;
   gap: $space-6;
-  background: $color-background;
+  background: var(--color-background);
 }
 
 .mockupMetrics {
@@ -111,8 +111,8 @@
 }
 
 .mockupCard {
-  background: $color-surface;
-  border: 1px solid $color-border;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: $radius-md;
   padding: $space-3;
 }
@@ -125,8 +125,8 @@
 
 .mockupChart {
   flex: 2;
-  background: $color-surface;
-  border: 1px solid $color-border;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: $radius-md;
   padding: $space-4;
   position: relative;
@@ -152,8 +152,8 @@
 
 .mockupChat {
   flex: 1;
-  background: $color-surface;
-  border: 1px solid $color-border;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: $radius-md;
   display: flex;
   flex-direction: column;
@@ -163,15 +163,15 @@
 .chatMessage {
   padding: $space-3;
   margin: $space-2;
-  background: rgba(0, 64, 129, 0.1);
+  background: var(--color-surface-2);
   border-radius: $radius-md;
-  border-left: 2px solid $color-info;
+  border-left: 2px solid var(--color-info);
 }
 
 .chatInputFake {
   padding: $space-3;
-  border-top: 1px solid $color-border;
-  color: $color-text-muted;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   font-size: $font-size-xs;
   margin-top: auto;
 }

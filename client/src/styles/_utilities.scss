@@ -114,42 +114,42 @@
 
 // ── Background (equivalente ao bg-* do Tailwind) ──────────────────────────────
 .bg-background {
-  background-color: $color-background;
+  background-color: var(--color-background);
 }
 .bg-surface {
-  background-color: $color-surface;
+  background-color: var(--color-surface);
 }
 .bg-surface-2 {
-  background-color: $color-surface-2;
+  background-color: var(--color-surface-2);
 }
 .bg-primary {
-  background-color: $color-primary;
+  background-color: var(--color-primary);
 }
 
 // ── Texto (equivalente ao text-* do Tailwind) ─────────────────────────────────
 .text-primary {
-  color: $color-text-primary;
+  color: var(--color-text-primary);
 }
 .text-secondary {
-  color: $color-text-secondary;
+  color: var(--color-text-secondary);
 }
 .text-muted {
-  color: $color-text-muted;
+  color: var(--color-text-muted);
 }
 .text-accent {
-  color: $color-primary;
+  color: var(--color-primary);
 }
 .text-success {
-  color: $color-success;
+  color: var(--color-success);
 }
 .text-warning {
-  color: $color-warning;
+  color: var(--color-warning);
 }
 .text-danger {
-  color: $color-danger;
+  color: var(--color-danger);
 }
 .text-info {
-  color: $color-info;
+  color: var(--color-info);
 }
 
 .text-xs {
@@ -205,18 +205,18 @@
   @include gradient-text;
 }
 .gradient-text-primary {
-  @include gradient-text($color-primary, $color-primary-light);
+  @include gradient-text(var(--color-primary), var(--color-primary-light));
 }
 
 // ── Border ────────────────────────────────────────────────────────────────────
 .border {
-  border: 1px solid $color-border;
+  border: 1px solid var(--color-border);
 }
 .border-strong {
-  border: 1px solid $color-border-strong;
+  border: 1px solid var(--color-border-strong);
 }
 .border-primary {
-  border: 1px solid $color-primary;
+  border: 1px solid var(--color-primary);
 }
 
 .rounded-sm {

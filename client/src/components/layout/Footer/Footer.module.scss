@@ -1,5 +1,6 @@
 @use "@styles/variables" as *;
 
 .footer {
-  background: $color-surface;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
 }

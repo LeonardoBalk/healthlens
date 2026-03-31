@@ -9,8 +9,11 @@ import {
   User,
   ChevronRight,
   ChevronLeft,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo/Logo'
+import { useTheme } from '@/contexts/ThemeContext'
 
 const navItems = [
   { path: '/app', label: 'Overview', icon: LayoutDashboard },
@@ -23,6 +26,7 @@ export default function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <aside className={`sidebar ${isExpanded ? 'sidebar--expanded' : ''}`}>
@@ -37,8 +41,12 @@ export default function Sidebar() {
       <div className="sidebar__logo">
         <Logo size={28} />
         <span className="sidebar__logo-text">
-          <span className="font-bold text-xl text-primary">Health</span>
-          <span className="font-bold text-xl text-accent">Lens</span>
+          <span className="font-bold text-xl" style={{ color: 'var(--color-text-primary)' }}>
+            Health
+          </span>
+          <span className="font-bold text-xl" style={{ color: 'var(--color-primary)' }}>
+            Lens
+          </span>
         </span>
       </div>
 
@@ -63,6 +71,18 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar__bottom">
+        <button
+          className="sidebar__item"
+          onClick={toggleTheme}
+          title={!isExpanded ? (theme === 'dark' ? 'Modo Claro' : 'Modo Escuro') : undefined}
+        >
+          {theme === 'dark' ? (
+            <Sun size={22} strokeWidth={1.8} className="sidebar__icon" />
+          ) : (
+            <Moon size={22} strokeWidth={1.8} className="sidebar__icon" />
+          )}
+          <span className="sidebar__label">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+        </button>
         <button className="sidebar__item" title={!isExpanded ? 'Configurações' : undefined}>
           <Settings size={22} strokeWidth={1.8} className="sidebar__icon" />
           <span className="sidebar__label">Configurações</span>

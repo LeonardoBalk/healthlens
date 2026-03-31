@@ -8,8 +8,8 @@ export function Footer() {
         <div className="flex-center gap-2">
           <Logo size={24} />
           <span>
-            <strong className="text-primary">Health</strong>
-            <strong className="text-accent">Lens</strong>
+            <strong style={{ color: 'var(--color-text-primary)' }}>Health</strong>
+            <strong style={{ color: 'var(--color-primary)' }}>Lens</strong>
           </span>
         </div>
         <p className="text-sm text-muted">

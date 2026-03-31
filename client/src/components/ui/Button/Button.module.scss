@@ -19,13 +19,13 @@
 }
 
 .primary {
-  background: $color-primary;
+  background: var(--color-primary);
   color: white;
   border: 1px solid transparent;
 
   &:hover:not(:disabled) {
-    background: $color-primary-dark;
-    @include glow($color-primary-glow);
+    background: var(--color-primary-dark);
+    @include glow(var(--color-primary-glow));
     transform: translateY(-1px);
   }
 
@@ -36,12 +36,12 @@
 
 .outline {
   background: transparent;
-  color: $color-text-primary;
-  border: 1px solid $color-border-strong;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--color-surface-2);
+    border-color: var(--color-border-strong);
     transform: translateY(-1px);
   }
 

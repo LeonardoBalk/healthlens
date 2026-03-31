@@ -1,0 +1,24 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.featuresSection {
+  padding: 6rem 0;
+  background: $color-surface-2;
+  border-top: 1px solid $color-border;
+}
+
+.featureCard {
+  @include card;
+  @include flex-col;
+  @include hover-lift;
+  height: 100%;
+}
+
+.iconWrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: $radius-md;
+  background: rgba(255, 45, 85, 0.1);
+  @include flex-center;
+  border: 1px solid rgba(255, 45, 85, 0.2);
+}

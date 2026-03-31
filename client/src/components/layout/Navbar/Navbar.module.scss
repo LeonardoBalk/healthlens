@@ -1,0 +1,40 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.navbar {
+  position: relative;
+  z-index: 10;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgb(25, 25, 29);
+}
+
+.navContainer {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 $space-6;
+  @include flex-between;
+  height: 4.5rem;
+
+  @include lg {
+    padding: 0 $space-8;
+  }
+}
+
+.logo {
+  @include flex-center;
+  gap: $space-2;
+}
+
+.navLinks {
+  display: none;
+  gap: $space-8;
+
+  @include md {
+    @include flex-center;
+  }
+}
+
+.navActions {
+  @include flex-center;
+}

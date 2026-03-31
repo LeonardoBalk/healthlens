@@ -1,7 +1,6 @@
-// ─── HealthLens — SCSS Entry Point ───────────────────────────────────────────
-// Ordem: variables → mixins → theme (CSS vars) → reset → utilities
 @use "styles/variables" as *;
 @use "styles/mixins" as *;
 @use "styles/theme";
 @use "styles/reset";
 @use "styles/utilities";
+@use "styles/dashboard";

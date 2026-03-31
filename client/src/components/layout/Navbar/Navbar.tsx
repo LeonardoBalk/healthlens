@@ -1,8 +1,13 @@
 import { Button } from '@/components/ui/Button/Button'
 import { Logo } from '@/components/ui/Logo/Logo'
 import styles from './Navbar.module.scss'
+import { useNavigate } from 'react-router-dom'
 
 export function Navbar() {
+  const navigate = useNavigate()
+  function onClickStart() {
+    void navigate('/app')
+  }
   return (
     <header className={styles.navbar}>
       <div className={styles.navContainer}>
@@ -17,7 +22,9 @@ export function Navbar() {
         <nav className={styles.navLinks} aria-label="Navegação principal"></nav>
 
         <div className={styles.navActions}>
-          <Button size="sm">Começar</Button>
+          <Button size="sm" onClick={onClickStart}>
+            Começar
+          </Button>
         </div>
       </div>
     </header>

@@ -11,8 +11,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/home" element={<LandingPage />} />
-        <Route path="/" element={<Layout />}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/app" element={<Layout />}>
           <Route index element={<OverviewPage />} />
           <Route path="series" element={<SeriesPage />} />
           <Route path="charts" element={<ChartsPage />} />

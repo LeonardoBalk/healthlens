@@ -3,10 +3,10 @@ import { Sun, Moon, Menu, ChevronRight } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 
 const routeLabels: Record<string, string> = {
-  '/': 'Overview',
-  '/series': 'Séries Temporais',
-  '/charts': 'Gráficos',
-  '/reports': 'Relatórios',
+  '/app': 'Overview',
+  '/app/series': 'Séries Temporais',
+  '/app/charts': 'Gráficos',
+  '/app/reports': 'Relatórios',
 }
 
 interface HeaderProps {
@@ -17,16 +17,19 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
 
-  const currentLabel = routeLabels[location.pathname] ?? 'Página'
+  const fallbackLabel =
+    location.pathname
+      .split('/')
+      .filter(Boolean)
+      .pop()
+      ?.replace(/^./, (str) => str.toUpperCase()) || 'Página'
+
+  const currentLabel = routeLabels[location.pathname] ?? fallbackLabel
 
   return (
     <header className="header">
       <div className="header__left">
-        <button
-          className="header__menu-btn"
-          onClick={onMenuClick}
-          aria-label="Abrir menu"
-        >
+        <button className="header__menu-btn" onClick={onMenuClick} aria-label="Abrir menu">
           <Menu size={20} />
         </button>
 

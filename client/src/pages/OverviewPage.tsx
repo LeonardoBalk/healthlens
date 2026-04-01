@@ -1,9 +1,9 @@
 export default function OverviewPage() {
   return (
     <div className="page">
-      <h1 className="gradient-text">Overview</h1>
+      <h1 className="gradient-text">Overview dos Datasets</h1>
       <p className="text-muted mt-4">
-        Visão geral dos seus dados de saúde. Faça upload de um dataset para começar.
+        Painel interno com visao geral das analises e do status dos seus datasets de saude.
       </p>
     </div>
   )

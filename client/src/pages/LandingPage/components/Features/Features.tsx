@@ -10,7 +10,7 @@ export function Features() {
         <div className="grid-3">
           <div className={styles.featureCard}>
             <div className={styles.iconWrapper}>
-              <Database size={24} className="text-primary" />
+              <Database size={22} strokeWidth={2.2} />
             </div>
             <h3 className="text-xl mb-4 mt-6">Estatísticas automáticas</h3>
             <p className="text-secondary flex-1">
@@ -21,7 +21,7 @@ export function Features() {
 
           <div className={styles.featureCard}>
             <div className={styles.iconWrapper}>
-              <BarChart2 size={24} className="text-primary" />
+              <BarChart2 size={22} strokeWidth={2.2} />
             </div>
             <h3 className="text-xl mb-4 mt-6">Gráficos interativos</h3>
             <p className="text-secondary flex-1">
@@ -32,7 +32,7 @@ export function Features() {
 
           <div className={styles.featureCard}>
             <div className={styles.iconWrapper}>
-              <MessageSquare size={24} className="text-primary" />
+              <MessageSquare size={22} strokeWidth={2.2} />
             </div>
             <h3 className="text-xl mb-4 mt-6">Chat com IA</h3>
             <p className="text-secondary flex-1">

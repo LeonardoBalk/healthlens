@@ -1,24 +1,60 @@
 @use "variables" as *;
 
-// ─── CSS Custom Properties (tema runtime) ─────────────────────────────────────
-// Estas vars ficam disponíveis para qualquer componente via var(--color-*)
-// Dark mode é o padrão — adicionar .light-mode no body para versão clara futura
+// CSS custom properties
+// Light mode is the default; dark mode overrides when data-theme="dark".
 
 :root {
-  // Background
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f5f9;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-strong: rgba(0, 0, 0, 0.14);
+
+  --color-primary: #{$color-primary};
+  --color-primary-dark: #{$color-primary-dark};
+  --color-primary-light: #{$color-primary-light};
+  --color-primary-glow: #{$color-primary-glow};
+
+  --color-warning: #{$color-warning};
+  --color-warning-glow: rgba(255, 159, 10, 0.18);
+  --color-success: #{$color-success};
+  --color-success-glow: rgba(48, 209, 88, 0.18);
+  --color-danger: #{$color-danger};
+  --color-danger-glow: rgba(255, 69, 58, 0.18);
+  --color-info: #{$color-info};
+  --color-info-glow: rgba(10, 132, 255, 0.18);
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+
+  --font-sans: #{$font-sans};
+  --font-mono: #{$font-mono};
+
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-xl: #{$radius-xl};
+  --radius-2xl: #{$radius-2xl};
+  --radius-full: #{$radius-full};
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.12);
+  --shadow-lg: 0 24px 56px rgba(15, 23, 42, 0.14);
+}
+
+:root[data-theme="dark"] {
   --color-background: #{$color-background};
   --color-surface: #{$color-surface};
   --color-surface-2: #{$color-surface-2};
   --color-border: #{$color-border};
   --color-border-strong: #{$color-border-strong};
 
-  // Primary
   --color-primary: #{$color-primary};
   --color-primary-dark: #{$color-primary-dark};
   --color-primary-light: #{$color-primary-light};
   --color-primary-glow: #{$color-primary-glow};
 
-  // Semânticas
   --color-warning: #{$color-warning};
   --color-warning-glow: #{$color-warning-glow};
   --color-success: #{$color-success};
@@ -28,32 +64,11 @@
   --color-info: #{$color-info};
   --color-info-glow: #{$color-info-glow};
 
-  // Texto
   --color-text-primary: #{$color-text-primary};
   --color-text-secondary: #{$color-text-secondary};
   --color-text-muted: #{$color-text-muted};
 
-  // Tipografia
-  --font-sans: #{$font-sans};
-  --font-mono: #{$font-mono};
-
-  // Radius
-  --radius-sm: #{$radius-sm};
-  --radius-md: #{$radius-md};
-  --radius-lg: #{$radius-lg};
-  --radius-xl: #{$radius-xl};
-  --radius-2xl: #{$radius-2xl};
-  --radius-full: #{$radius-full};
-
-  // Shadows
   --shadow-sm: #{$shadow-sm};
   --shadow-md: #{$shadow-md};
   --shadow-lg: #{$shadow-lg};
 }
-
-// Tema claro (futuro — basta adicionar class="light" no <html>)
-// :root.light {
-//   --color-background: #FFFFFF;
-//   --color-surface:    #F4F4F5;
-//   ...
-// }

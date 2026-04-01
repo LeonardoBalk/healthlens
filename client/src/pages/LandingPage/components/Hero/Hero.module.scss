@@ -33,11 +33,11 @@
 }
 
 .badgeFormat {
-  background: $color-surface;
-  border: 1px solid $color-border;
+  background: var(--color-surface, $color-surface);
+  border: 1px solid var(--color-border, $color-border);
   padding: $space-1 $space-3;
   border-radius: $radius-sm;
   font-family: $font-mono;
   font-size: $font-size-sm;
-  color: $color-text-primary;
+  color: var(--color-text-primary, $color-text-primary);
 }

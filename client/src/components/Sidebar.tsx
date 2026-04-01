@@ -1,12 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Activity, BarChart3, FileText } from 'lucide-react'
+import { Activity, BarChart3, FileText, LayoutDashboard } from 'lucide-react'
 import HealthLensLogo from './HealthLensLogo'
 
 const navItems = [
-  { path: '/', label: 'Overview', icon: LayoutDashboard },
-  { path: '/series', label: 'Séries Temporais', icon: Activity },
-  { path: '/charts', label: 'Gráficos', icon: BarChart3 },
-  { path: '/reports', label: 'Relatórios', icon: FileText },
+  { key: 'overview', path: '/', label: 'Overview', icon: LayoutDashboard },
+  { key: 'series', path: '/series', label: 'Séries Temporais', icon: Activity },
+  { key: 'charts', path: '/charts', label: 'Gráficos', icon: BarChart3 },
+  { key: 'reports', path: '/reports', label: 'Relatórios', icon: FileText },
 ]
 
 interface SidebarProps {
@@ -17,9 +17,15 @@ interface SidebarProps {
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
+  const navBase = location.pathname.startsWith('/datasets') ? '/datasets' : ''
 
   const handleNav = (path: string) => {
-    navigate(path)
+    void navigate(path)
+    onClose()
+  }
+
+  const handleGoToLanding = () => {
+    void navigate('/')
     onClose()
   }
 
@@ -28,20 +34,29 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       {open && <div className="sidebar-backdrop" onClick={onClose} />}
       <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
         <div className="sidebar__logo">
-          <HealthLensLogo size={28} />
+          <button
+            type="button"
+            className="sidebar__logo-btn"
+            onClick={handleGoToLanding}
+            aria-label="Ir para landing page"
+          >
+            <HealthLensLogo size={28} />
+          </button>
         </div>
 
         <nav className="sidebar__nav">
-          {navItems.map(({ path, label, icon: Icon }) => {
-            const isActive = path === '/'
-              ? location.pathname === '/'
-              : location.pathname.startsWith(path)
+          {navItems.map(({ key, path, label, icon: Icon }) => {
+            const fullPath = `${navBase}${path === '/' ? '' : path}` || '/'
+            const isActive =
+              fullPath === '/'
+                ? location.pathname === '/'
+                : location.pathname === fullPath || location.pathname.startsWith(`${fullPath}/`)
 
             return (
               <button
-                key={path}
+                key={key}
                 className={`sidebar__item ${isActive ? 'sidebar__item--active' : ''}`}
-                onClick={() => handleNav(path)}
+                onClick={() => handleNav(fullPath)}
                 title={label}
                 aria-current={isActive ? 'page' : undefined}
               >

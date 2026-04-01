@@ -1,18 +1,39 @@
-# ── Dependências ───────────────────────────────────────
+# Dependencies
 node_modules/
 
-# ── Build outputs ──────────────────────────────────────
+# Build outputs
 dist/
 build/
 .next/
 out/
 
-# ── Variáveis de ambiente ──────────────────────────────
+# Environment variables
 .env
 .env.local
 .env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.development
+**/.env.production
+**/.env.test
+!.env.example
+!**/.env.example
 
-# ── Python ─────────────────────────────────────────────
+# Secrets / credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+secrets/
+credentials/
+*.secret
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -23,27 +44,28 @@ processing/venv/
 *.egg-info/
 .pytest_cache/
 
-# ── TypeScript ─────────────────────────────────────────
+# TypeScript
 *.tsbuildinfo
 node_modules/.tmp/
 
-# ── Logs ──────────────────────────────────────────────
+# Logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 
-# ── Sistema operacional ────────────────────────────────
+# Operating systems
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ── IDE ───────────────────────────────────────────────
+# IDE
 .vscode/settings.json
 .idea/
 *.swp
 *.swo
 
-# ── Misc ──────────────────────────────────────────────
+# Misc
 coverage/
 .cache/
+.pnpm-store/

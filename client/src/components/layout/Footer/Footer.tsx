@@ -4,23 +4,23 @@ import styles from './Footer.module.scss'
 export function Footer() {
   return (
     <footer className={styles.footer}>
-      <div className="container flex-between py-4">
-        <div className="flex-center gap-2">
+      <div className={`container py-4 ${styles.inner}`}>
+        <div className={styles.brand}>
           <Logo size={24} />
           <span>
-            <strong className="text-primary">Health</strong>
-            <strong className="text-accent">Lens</strong>
+            <strong className={styles.brandHealth}>Health</strong>
+            <strong className={styles.brandLens}>Lens</strong>
           </span>
         </div>
-        <p className="text-sm text-muted">
+        <p className={styles.copy}>
           &copy; {new Date().getFullYear()} HealthLens. Todos os direitos reservados.
         </p>
-        <div className="flex gap-4">
+        <div className={styles.links}>
           <a
             href="https://github.com/LeonardoBalk/healthlens"
             target="_blank"
             rel="noreferrer"
-            className="text-muted"
+            className={styles.link}
           >
             GitHub
           </a>

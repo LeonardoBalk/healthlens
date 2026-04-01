@@ -12,23 +12,20 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('healthlens-theme')
-    return (saved === 'light' || saved === 'dark') ? saved : 'dark'
+    return saved === 'light' || saved === 'dark' ? saved : 'light'
   })
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.style.colorScheme = theme
     localStorage.setItem('healthlens-theme', theme)
   }, [theme])
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark')
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
   }
 
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  )
+  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>
 }
 
 export function useTheme() {

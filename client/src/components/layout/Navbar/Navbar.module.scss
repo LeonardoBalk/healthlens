@@ -4,8 +4,8 @@
 .navbar {
   position: relative;
   z-index: 10;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgb(25, 25, 29);
+  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.05));
+  background: var(--color-surface, rgb(25, 25, 29));
 }
 
 .navContainer {
@@ -26,6 +26,22 @@
   gap: $space-2;
 }
 
+.brandText {
+  margin-left: 4px;
+}
+
+.brandHealth {
+  font-weight: $font-weight-bold;
+  font-size: $font-size-xl;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.brandLens {
+  font-weight: $font-weight-bold;
+  font-size: $font-size-xl;
+  color: $color-primary;
+}
+
 .navLinks {
   display: none;
   gap: $space-8;
@@ -37,4 +53,24 @@
 
 .navActions {
   @include flex-center;
+  gap: $space-2;
+}
+
+.themeToggle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: $radius-full;
+  border: 1px solid var(--color-border-strong, rgba(255, 255, 255, 0.2));
+  color: var(--color-text-primary, $color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color $transition-fast,
+    background-color $transition-fast;
+
+  &:hover {
+    border-color: var(--color-border-strong, rgba(255, 255, 255, 0.35));
+    background: color-mix(in srgb, var(--color-surface-2, $color-surface-2) 70%, transparent);
+  }
 }

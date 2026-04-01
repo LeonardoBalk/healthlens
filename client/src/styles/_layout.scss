@@ -1,34 +1,13 @@
-@use 'variables' as *;
-@use 'mixins' as *;
+@use "variables" as *;
+@use "mixins" as *;
 
 // ─── Theme Variables ────────────────────────────────────────────────────────
-:root {
-  &[data-theme='light'] {
-    --color-bg: #f8fafc;
-    --color-bg-elevated: #ffffff;
-    --color-bg-card: #ffffff;
-    --color-surface: #f1f5f9;
-    --color-border: rgba(0, 0, 0, 0.08);
-    --color-border-strong: rgba(0, 0, 0, 0.14);
-    
-    --color-primary: #3b82f6;
-    --color-primary-hover: #2563eb;
-    --color-primary-glow: rgba(59, 130, 246, 0.15);
-    
-    --color-accent: #059669;
-    --color-accent-glow: rgba(5, 150, 105, 0.1);
-    
-    --color-text: #0f172a;
-    --color-text-muted: #475569;
-    --color-text-subtle: #64748b;
-  }
-}
-
-// Map variables to CSS vars for theming support
 body {
-  background-color: var(--color-bg, $color-bg);
-  color: var(--color-text, $color-text);
-  transition: background-color $transition-base, color $transition-base;
+  background-color: var(--color-background, $color-background);
+  color: var(--color-text-primary, $color-text-primary);
+  transition:
+    background-color $transition-base,
+    color $transition-base;
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -60,13 +39,15 @@ body {
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 .sidebar {
   width: 256px;
-  background-color: var(--color-bg-elevated, $color-bg-elevated);
+  background-color: var(--color-surface, $color-surface);
   border-right: 1px solid var(--color-border, $color-border);
   display: flex;
   flex-direction: column;
-  transition: transform $transition-base, background-color $transition-base;
+  transition:
+    transform $transition-base,
+    background-color $transition-base;
   z-index: 40;
-  
+
   // Mobile - hidden by default
   position: fixed;
   top: 0;
@@ -92,6 +73,19 @@ body {
     border-bottom: 1px solid var(--color-border, $color-border);
   }
 
+  &__logo-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius-md;
+    color: inherit;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+    }
+  }
+
   &__nav {
     flex: 1;
     padding: $space-4 $space-3;
@@ -108,22 +102,22 @@ body {
     gap: $space-3;
     padding: $space-3 $space-4;
     border-radius: $radius-md;
-    color: var(--color-text-subtle, $color-text-subtle);
+    color: var(--color-text-secondary, $color-text-secondary);
     font-weight: 500;
     transition: all $transition-fast;
     width: 100%;
 
     &:hover {
       background-color: var(--color-surface, $color-surface);
-      color: var(--color-text, $color-text);
+      color: var(--color-text-primary, $color-text-primary);
     }
 
     &--active {
-      background-color: var(--color-primary-glow, $color-primary-glow);
-      color: var(--color-primary, $color-primary);
+      background-color: rgba(255, 45, 85, 0.12);
+      color: $color-primary;
 
       &:hover {
-        background-color: var(--color-primary-glow, $color-primary-glow);
+        background-color: rgba(255, 45, 85, 0.12);
       }
     }
   }
@@ -135,7 +129,7 @@ body {
   background-color: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
   z-index: 30;
-  
+
   @include lg {
     display: none;
   }
@@ -144,7 +138,7 @@ body {
 // ─── Header ───────────────────────────────────────────────────────────────────
 .header {
   height: 64px;
-  background-color: var(--color-bg-elevated, $color-bg-elevated);
+  background-color: var(--color-surface, $color-surface);
   border-bottom: 1px solid var(--color-border, $color-border);
   display: flex;
   align-items: center;
@@ -166,7 +160,7 @@ body {
     width: 36px;
     height: 36px;
     border-radius: $radius-md;
-    color: var(--color-text, $color-text);
+    color: var(--color-text-primary, $color-text-primary);
     transition: background-color $transition-fast;
 
     &:hover {
@@ -185,7 +179,7 @@ body {
     font-size: 0.875rem;
 
     &-root {
-      color: var(--color-text-subtle, $color-text-subtle);
+      color: var(--color-text-secondary, $color-text-secondary);
       font-weight: 500;
     }
 
@@ -194,7 +188,7 @@ body {
     }
 
     &-current {
-      color: var(--color-text, $color-text);
+      color: var(--color-text-primary, $color-text-primary);
       font-weight: 600;
     }
   }
@@ -212,7 +206,7 @@ body {
     width: 36px;
     height: 36px;
     border-radius: $radius-full;
-    color: var(--color-text, $color-text);
+    color: var(--color-text-primary, $color-text-primary);
     transition: background-color $transition-fast;
 
     &:hover {

@@ -1,5 +1,5 @@
+import { ChevronRight, Menu, Moon, Sun } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
-import { Sun, Moon, Menu, ChevronRight } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 
 const routeLabels: Record<string, string> = {
@@ -7,6 +7,10 @@ const routeLabels: Record<string, string> = {
   '/series': 'Séries Temporais',
   '/charts': 'Gráficos',
   '/reports': 'Relatórios',
+  '/datasets': 'Overview',
+  '/datasets/series': 'Séries Temporais',
+  '/datasets/charts': 'Gráficos',
+  '/datasets/reports': 'Relatórios',
 }
 
 interface HeaderProps {
@@ -22,11 +26,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   return (
     <header className="header">
       <div className="header__left">
-        <button
-          className="header__menu-btn"
-          onClick={onMenuClick}
-          aria-label="Abrir menu"
-        >
+        <button className="header__menu-btn" onClick={onMenuClick} aria-label="Abrir menu">
           <Menu size={20} />
         </button>
 

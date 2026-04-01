@@ -1,23 +1,31 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { LandingPage } from './pages/LandingPage/LandingPage'
 import Layout from './components/Layout'
 import OverviewPage from './pages/OverviewPage'
 import SeriesPage from './pages/SeriesPage'
 import ChartsPage from './pages/ChartsPage'
 import ReportsPage from './pages/ReportsPage'
+import LoginPage from './pages/LoginPage/LoginPage'
 import './App.scss'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/home" element={<LandingPage />} />
-        <Route path="/" element={<Layout />}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/datasets" element={<Layout />}>
           <Route index element={<OverviewPage />} />
           <Route path="series" element={<SeriesPage />} />
           <Route path="charts" element={<ChartsPage />} />
           <Route path="reports" element={<ReportsPage />} />
         </Route>
+        <Route path="/overview" element={<Navigate to="/datasets" replace />} />
+        <Route path="/series" element={<Navigate to="/datasets/series" replace />} />
+        <Route path="/charts" element={<Navigate to="/datasets/charts" replace />} />
+        <Route path="/reports" element={<Navigate to="/datasets/reports" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   )

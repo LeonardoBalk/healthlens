@@ -15,15 +15,15 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   font-family: $font-sans;
   font-size: $font-size-base;
   line-height: $line-height-normal;
-  color: $color-text-primary;
-  background-color: $color-background;
+  color: var(--color-text-primary, $color-text-primary);
+  background-color: var(--color-background, $color-background);
   min-height: 100vh;
 }
 
@@ -43,7 +43,7 @@ h6 {
   font-family: $font-sans;
   font-weight: $font-weight-semibold;
   line-height: $line-height-tight;
-  color: $color-text-primary;
+  color: var(--color-text-primary, $color-text-primary);
 }
 
 h1 {
@@ -66,16 +66,16 @@ h6 {
 }
 
 p {
-  color: $color-text-secondary;
+  color: var(--color-text-secondary, $color-text-secondary);
   line-height: $line-height-relaxed;
 }
 
 a {
-  color: $color-primary;
+  color: var(--color-primary, $color-primary);
   text-decoration: none;
   transition: color $transition-fast;
   &:hover {
-    color: $color-primary-light;
+    color: var(--color-primary-light, $color-primary-light);
   }
 }
 
@@ -87,16 +87,16 @@ pre {
 }
 
 code {
-  background: $color-surface;
-  border: 1px solid $color-border;
+  background: var(--color-surface, $color-surface);
+  border: 1px solid var(--color-border, $color-border);
   padding: 0.1em 0.35em;
   border-radius: $radius-sm;
-  color: $color-primary-light;
+  color: var(--color-primary-light, $color-primary-light);
 }
 
 pre {
-  background: $color-surface;
-  border: 1px solid $color-border;
+  background: var(--color-surface, $color-surface);
+  border: 1px solid var(--color-border, $color-border);
   border-radius: $radius-lg;
   padding: $space-4;
   overflow-x: auto;
@@ -129,25 +129,25 @@ textarea,
 select {
   font-family: $font-sans;
   font-size: $font-size-base;
-  background: $color-surface;
-  border: 1px solid $color-border;
-  color: $color-text-primary;
+  background: var(--color-surface, $color-surface);
+  border: 1px solid var(--color-border, $color-border);
+  color: var(--color-text-primary, $color-text-primary);
   border-radius: $radius-md;
 
   &::placeholder {
-    color: $color-text-muted;
+    color: var(--color-text-muted, $color-text-muted);
   }
   &:focus {
     outline: none;
-    border-color: $color-primary;
-    box-shadow: 0 0 0 3px rgba(255, 45, 85, 0.15);
+    border-color: var(--color-primary, $color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, $color-primary) 22%, transparent);
   }
 }
 
 // ── Seleção ───────────────────────────────────────────────────────────────────
 ::selection {
   background: rgba(255, 45, 85, 0.25);
-  color: $color-text-primary;
+  color: var(--color-text-primary, $color-text-primary);
 }
 
 // ── Scrollbar ─────────────────────────────────────────────────────────────────
@@ -156,12 +156,12 @@ select {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: $color-background;
+  background: var(--color-background, $color-background);
 }
 ::-webkit-scrollbar-thumb {
-  background: $color-border-strong;
+  background: var(--color-border-strong, $color-border-strong);
   border-radius: $radius-full;
   &:hover {
-    background: $color-text-muted;
+    background: var(--color-text-muted, $color-text-muted);
   }
 }

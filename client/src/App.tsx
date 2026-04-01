@@ -9,28 +9,32 @@ import LoginPage from './pages/LoginPage/LoginPage'
 import DatasetUploadPage from './pages/DatasetUploadPage/DatasetUploadPage'
 import './App.scss'
 
+import { ThemeProvider } from './contexts/ThemeContext'
+
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/home" element={<Navigate to="/" replace />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/datasets" element={<Layout />}>
-          <Route index element={<OverviewPage />} />
-          <Route path="new" element={<DatasetUploadPage />} />
-          <Route path="series" element={<SeriesPage />} />
-          <Route path="charts" element={<ChartsPage />} />
-          <Route path="reports" element={<ReportsPage />} />
-        </Route>
-        <Route path="/overview" element={<Navigate to="/datasets" replace />} />
-        <Route path="/new" element={<Navigate to="/datasets/new" replace />} />
-        <Route path="/series" element={<Navigate to="/datasets/series" replace />} />
-        <Route path="/charts" element={<Navigate to="/datasets/charts" replace />} />
-        <Route path="/reports" element={<Navigate to="/datasets/reports" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/datasets" element={<Layout />}>
+            <Route index element={<OverviewPage />} />
+            <Route path="new" element={<DatasetUploadPage />} />
+            <Route path="series" element={<SeriesPage />} />
+            <Route path="charts" element={<ChartsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+          </Route>
+          <Route path="/overview" element={<Navigate to="/datasets" replace />} />
+          <Route path="/new" element={<Navigate to="/datasets/new" replace />} />
+          <Route path="/series" element={<Navigate to="/datasets/series" replace />} />
+          <Route path="/charts" element={<Navigate to="/datasets/charts" replace />} />
+          <Route path="/reports" element={<Navigate to="/datasets/reports" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }
 

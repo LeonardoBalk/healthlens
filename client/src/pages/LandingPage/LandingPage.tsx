@@ -8,6 +8,7 @@ import styles from './LandingPage.module.scss'
 export function LandingPage() {
   return (
     <div className={styles.container}>
+      <div className={styles.gridBackground} />
       <div className={styles.glowReflect} />
       <Navbar />
       <main>

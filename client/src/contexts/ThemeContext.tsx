@@ -16,8 +16,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    document.documentElement.style.colorScheme = theme
+    if (theme === 'dark') {
+      document.body.classList.add('dark')
+    } else {
+      document.body.classList.remove('dark')
+    }
     localStorage.setItem('healthlens-theme', theme)
   }, [theme])
 

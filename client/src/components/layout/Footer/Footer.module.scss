@@ -2,8 +2,8 @@
 @use "@styles/mixins" as *;
 
 .footer {
-  background: var(--color-surface, $color-surface);
-  border-top: 1px solid var(--color-border, $color-border);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
 }
 
 .inner {
@@ -18,15 +18,15 @@
 }
 
 .brandHealth {
-  color: var(--color-text-primary, $color-text-primary);
+  color: var(--color-text-primary);
 }
 
 .brandLens {
-  color: $color-primary;
+  color: var(--color-primary);
 }
 
 .copy {
-  color: var(--color-text-muted, $color-text-muted);
+  color: var(--color-text-muted);
   font-size: $font-size-sm;
 }
 
@@ -36,11 +36,11 @@
 }
 
 .link {
-  color: var(--color-text-muted, $color-text-muted);
+  color: var(--color-text-muted);
   transition: color $transition-fast;
 
   &:hover {
-    color: $color-primary;
+    color: var(--color-primary);
   }
 }
 

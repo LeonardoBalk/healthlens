@@ -15,15 +15,14 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: light;
 }
 
 body {
-  font-family: $font-sans;
-  font-size: $font-size-base;
-  line-height: $line-height-normal;
-  color: var(--color-text-primary, $color-text-primary);
-  background-color: var(--color-background, $color-background);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
   min-height: 100vh;
 }
 
@@ -40,10 +39,10 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: $font-sans;
-  font-weight: $font-weight-semibold;
-  line-height: $line-height-tight;
-  color: var(--color-text-primary, $color-text-primary);
+  font-family: var(--font-sans);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
 }
 
 h1 {
@@ -66,16 +65,16 @@ h6 {
 }
 
 p {
-  color: var(--color-text-secondary, $color-text-secondary);
-  line-height: $line-height-relaxed;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
 }
 
 a {
-  color: var(--color-primary, $color-primary);
+  color: var(--color-primary);
   text-decoration: none;
-  transition: color $transition-fast;
+  transition: color var(--transition-fast);
   &:hover {
-    color: var(--color-primary-light, $color-primary-light);
+    color: var(--color-primary-light);
   }
 }
 
@@ -87,18 +86,18 @@ pre {
 }
 
 code {
-  background: var(--color-surface, $color-surface);
-  border: 1px solid var(--color-border, $color-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   padding: 0.1em 0.35em;
-  border-radius: $radius-sm;
-  color: var(--color-primary-light, $color-primary-light);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary-light);
 }
 
 pre {
-  background: var(--color-surface, $color-surface);
-  border: 1px solid var(--color-border, $color-border);
-  border-radius: $radius-lg;
-  padding: $space-4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
   overflow-x: auto;
   code {
     background: none;
@@ -127,20 +126,20 @@ button {
 input,
 textarea,
 select {
-  font-family: $font-sans;
-  font-size: $font-size-base;
-  background: var(--color-surface, $color-surface);
-  border: 1px solid var(--color-border, $color-border);
-  color: var(--color-text-primary, $color-text-primary);
-  border-radius: $radius-md;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
 
   &::placeholder {
-    color: var(--color-text-muted, $color-text-muted);
+    color: var(--color-text-muted);
   }
   &:focus {
     outline: none;
-    border-color: var(--color-primary, $color-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, $color-primary) 22%, transparent);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
   }
 }
 

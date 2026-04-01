@@ -23,7 +23,14 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
 
-  const currentLabel = routeLabels[location.pathname] ?? 'Pagina'
+  const fallbackLabel =
+    location.pathname
+      .split('/')
+      .filter(Boolean)
+      .pop()
+      ?.replace(/^./, (str) => str.toUpperCase()) || 'Página'
+
+  const currentLabel = routeLabels[location.pathname] ?? fallbackLabel
 
   return (
     <header className="header">

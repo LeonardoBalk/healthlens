@@ -4,11 +4,13 @@ import { useTheme } from '../contexts/ThemeContext'
 
 const routeLabels: Record<string, string> = {
   '/': 'Overview',
+  '/list': 'Meus Datasets',
   '/new': 'Upload',
   '/series': 'Series Temporais',
   '/charts': 'Graficos',
   '/reports': 'Relatorios',
   '/datasets': 'Overview',
+  '/datasets/list': 'Meus Datasets',
   '/datasets/new': 'Upload',
   '/datasets/series': 'Series Temporais',
   '/datasets/charts': 'Graficos',

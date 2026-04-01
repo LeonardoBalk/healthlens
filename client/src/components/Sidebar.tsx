@@ -5,7 +5,7 @@ import {
   Activity,
   BarChart3,
   FileText,
-  Upload,
+  Database,
   Settings,
   User,
   ChevronRight,
@@ -18,7 +18,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 
 const navItems = [
   { key: 'overview', path: '/', label: 'Overview', icon: LayoutDashboard },
-  { key: 'new-upload', path: '/new', label: 'Upload', icon: Upload },
+  { key: 'datasets', path: '/list', label: 'Meus Datasets', icon: Database },
   { key: 'series', path: '/series', label: 'Series Temporais', icon: Activity },
   { key: 'charts', path: '/charts', label: 'Graficos', icon: BarChart3 },
   { key: 'reports', path: '/reports', label: 'Relatorios', icon: FileText },
@@ -50,7 +50,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <>
       {open && <div className="sidebar-backdrop" onClick={onClose} />}
-      <aside className={`sidebar ${open ? 'sidebar--open' : ''} ${isExpanded ? 'sidebar--expanded' : ''}`}>
+      <aside
+        className={`sidebar ${open ? 'sidebar--open' : ''} ${isExpanded ? 'sidebar--expanded' : ''}`}
+      >
         <button
           className="sidebar__toggle"
           onClick={() => setIsExpanded(!isExpanded)}
@@ -83,8 +85,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           {navItems.map(({ key, path, label, icon: Icon }) => {
             const fullPath = `${navBase}${path === '/' ? '' : path}` || '/'
             const isActive =
-              fullPath === '/'
-                ? location.pathname === '/'
+              fullPath === '/' || fullPath === '/datasets'
+                ? location.pathname === fullPath || location.pathname === `${fullPath}/`
                 : location.pathname === fullPath || location.pathname.startsWith(`${fullPath}/`)
 
             return (
@@ -113,7 +115,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             ) : (
               <Moon size={22} strokeWidth={1.8} className="sidebar__icon" />
             )}
-            <span className="sidebar__label">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+            <span className="sidebar__label">
+              {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+            </span>
           </button>
           <button className="sidebar__item" title={!isExpanded ? 'Configurações' : undefined}>
             <Settings size={22} strokeWidth={1.8} className="sidebar__icon" />

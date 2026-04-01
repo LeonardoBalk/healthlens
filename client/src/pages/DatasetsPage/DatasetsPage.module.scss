@@ -1,0 +1,102 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  @include flex-between;
+  align-items: center;
+
+  .title {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    color: var(--color-text-primary, $color-text-primary);
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.datasetCard {
+  @include flex-between;
+  align-items: center;
+  padding: $space-4 $space-5;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border, $color-border);
+  background: var(--color-surface, $color-surface);
+  cursor: pointer;
+  transition:
+    transform $transition-fast,
+    border-color $transition-fast,
+    background-color $transition-fast;
+
+  &:hover {
+    border-color: var(--color-border-strong, $color-border-strong);
+    transform: translateY(-1px);
+  }
+
+  &.active {
+    border-color: var(--color-primary, $color-primary);
+    background: color-mix(in srgb, var(--color-primary, $color-primary) 8%, transparent);
+  }
+}
+
+.info {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+
+  .iconWrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-md;
+    background: var(--color-surface-2, $color-surface-2);
+    @include flex-center;
+    color: var(--color-text-secondary, $color-text-secondary);
+
+    .active & {
+      background: var(--color-primary, $color-primary);
+      color: white;
+    }
+  }
+
+  .details {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+  }
+
+  .name {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: var(--color-text-primary, $color-text-primary);
+  }
+
+  .meta {
+    font-size: $font-size-sm;
+    color: var(--color-text-secondary, $color-text-secondary);
+  }
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--color-text-muted, $color-text-muted);
+
+  &.activeStatus {
+    color: var(--color-primary, $color-primary);
+  }
+}

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/Button/Button'
 import { Logo } from '@/components/ui/Logo/Logo'
 import { useTheme } from '@/contexts/ThemeContext'
 import styles from './Navbar.module.scss'
-import { useNavigate } from 'react-router-dom'
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme()

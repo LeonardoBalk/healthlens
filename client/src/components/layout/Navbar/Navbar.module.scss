@@ -24,12 +24,16 @@
 }
 
 .logo {
-  @include flex-center;
+  display: flex;
+  align-items: center;
   gap: $space-2;
+  user-select: none;
 }
 
 .brandText {
   margin-left: 4px;
+  display: flex;
+  align-items: center;
 }
 
 .brandHealth {
@@ -54,22 +58,30 @@
 }
 
 .navActions {
-  @include flex-center;
-  gap: $space-2;
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  user-select: none;
 }
 
 .themeToggle {
-  width: 2rem;
-  height: 2rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: $radius-full;
   border: 1px solid var(--color-border-strong, rgba(255, 255, 255, 0.2));
   color: var(--color-text-primary, $color-text-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
   transition:
     border-color $transition-fast,
     background-color $transition-fast;
+
+  svg {
+    display: block;
+  }
 
   &:hover {
     border-color: var(--color-border-strong, rgba(255, 255, 255, 0.35));

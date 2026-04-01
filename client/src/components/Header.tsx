@@ -4,13 +4,15 @@ import { useTheme } from '../contexts/ThemeContext'
 
 const routeLabels: Record<string, string> = {
   '/': 'Overview',
-  '/series': 'Séries Temporais',
-  '/charts': 'Gráficos',
-  '/reports': 'Relatórios',
+  '/new': 'Upload',
+  '/series': 'Series Temporais',
+  '/charts': 'Graficos',
+  '/reports': 'Relatorios',
   '/datasets': 'Overview',
-  '/datasets/series': 'Séries Temporais',
-  '/datasets/charts': 'Gráficos',
-  '/datasets/reports': 'Relatórios',
+  '/datasets/new': 'Upload',
+  '/datasets/series': 'Series Temporais',
+  '/datasets/charts': 'Graficos',
+  '/datasets/reports': 'Relatorios',
 }
 
 interface HeaderProps {
@@ -21,7 +23,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
 
-  const currentLabel = routeLabels[location.pathname] ?? 'Página'
+  const currentLabel = routeLabels[location.pathname] ?? 'Pagina'
 
   return (
     <header className="header">

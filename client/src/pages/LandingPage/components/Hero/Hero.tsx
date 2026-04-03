@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/Button/Button'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import styles from './Hero.module.scss'
 
 export function Hero() {
@@ -21,7 +22,9 @@ export function Hero() {
         </p>
 
         <div className={styles.heroButtons}>
-          <Button size="lg">Analisar Dataset</Button>
+          <Link to="/datasets" aria-label="Ir para datasets">
+            <Button size="lg">Analisar Dataset</Button>
+          </Link>
         </div>
 
         <div className={styles.formats}>

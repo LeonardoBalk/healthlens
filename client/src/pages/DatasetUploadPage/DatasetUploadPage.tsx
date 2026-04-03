@@ -8,6 +8,11 @@ import {
 } from 'react'
 import { FileJson, FileSpreadsheet, FileText, LoaderCircle, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/Button/Button'
+import {
+  createChartDatasetRecordFromFile,
+  setActiveChartDatasetId,
+  storeUploadedChartDataset,
+} from '@/utils/chartDatasets'
 import styles from './DatasetUploadPage.module.scss'
 
 const ACCEPTED_EXTENSIONS = ['.csv', '.json', '.xlsx'] as const
@@ -150,6 +155,10 @@ export default function DatasetUploadPage() {
         type: 'success',
         message: payload?.message ?? 'Arquivo enviado com sucesso.',
       })
+
+      const datasetRecord = await createChartDatasetRecordFromFile(selectedFile)
+      storeUploadedChartDataset(datasetRecord)
+      setActiveChartDatasetId(datasetRecord.id)
     } catch {
       setToast({
         type: 'error',

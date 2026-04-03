@@ -1,25 +1,46 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Database, Plus, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Database, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button/Button'
+import {
+  getActiveChartDatasetId,
+  getAllChartDatasets,
+  setActiveChartDatasetId,
+  type ChartDatasetRecord,
+} from '@/utils/chartDatasets'
 import styles from './DatasetsPage.module.scss'
 
-const MOCKED_DATASETS = [
-  { id: 1, name: 'Pacientes_Cardio_2023.csv', date: '2023-10-01', size: '2.4 MB' },
-  { id: 2, name: 'Exames_Sangue_Q1.xlsx', date: '2023-11-15', size: '1.1 MB' },
-  { id: 3, name: 'Registros_Neurologia.json', date: '2024-01-10', size: '4.8 MB' },
-]
+const formatDate = (isoDate: string) => {
+  const parsed = new Date(isoDate)
+  if (Number.isNaN(parsed.valueOf())) return 'data indisponivel'
+  return parsed.toLocaleDateString('pt-BR')
+}
 
 export default function DatasetsPage() {
   const navigate = useNavigate()
-  const [activeDatasetId, setActiveDatasetId] = useState<number | null>(1)
+  const datasets = useMemo<ChartDatasetRecord[]>(() => getAllChartDatasets(), [])
+  const [activeDatasetId, setActiveDatasetId] = useState<string | null>(() => {
+    const activeId = getActiveChartDatasetId()
+    if (activeId && datasets.some((dataset) => dataset.id === activeId)) return activeId
+    return datasets[0]?.id ?? null
+  })
+
+  const orderedDatasets = useMemo(() => {
+    if (!activeDatasetId) return datasets
+    return [...datasets].sort((a, b) => {
+      if (a.id === activeDatasetId) return -1
+      if (b.id === activeDatasetId) return 1
+      return b.uploadedAt.localeCompare(a.uploadedAt)
+    })
+  }, [activeDatasetId, datasets])
 
   const handleImport = () => {
     void navigate('/datasets/new')
   }
 
-  const handleSelectDataset = (id: number) => {
-    setActiveDatasetId(id)
+  const handleSelectDataset = (datasetId: string) => {
+    setActiveDatasetId(datasetId)
+    setActiveChartDatasetId(datasetId)
   }
 
   return (
@@ -33,7 +54,7 @@ export default function DatasetsPage() {
       </header>
 
       <div className={styles.list}>
-        {MOCKED_DATASETS.map((dataset) => {
+        {orderedDatasets.map((dataset) => {
           const isActive = activeDatasetId === dataset.id
 
           return (
@@ -43,8 +64,8 @@ export default function DatasetsPage() {
               onClick={() => handleSelectDataset(dataset.id)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
                   handleSelectDataset(dataset.id)
                 }
               }}
@@ -56,7 +77,7 @@ export default function DatasetsPage() {
                 <div className={styles.details}>
                   <span className={styles.name}>{dataset.name}</span>
                   <span className={styles.meta}>
-                    Adicionado em {dataset.date} • {dataset.size}
+                    Adicionado em {formatDate(dataset.uploadedAt)} - {dataset.sizeLabel}
                   </span>
                 </div>
               </div>

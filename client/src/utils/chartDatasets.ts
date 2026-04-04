@@ -1,30 +1,30 @@
 type RiskLevel = 'Baixo' | 'Moderado' | 'Alto'
 
 export type TrendPoint = {
-  month: string
-  atendimentos: number
-  glicemia: number
-  pressao: number
-  internacoes: number
-  adesao: number
+  group: string
+  sampleSize: number
+  primary: number
+  secondary: number | null
+  highCount: number
+  lowShare: number
 }
 
 export type HistogramPoint = {
-  faixa: string
+  bucket: string
   total: number
-  critico: number
+  aboveThreshold: number
 }
 
-export type RegionRiskPoint = {
-  regiao: string
-  risco: number
+export type SegmentSharePoint = {
+  segment: string
+  ratio: number
 }
 
 export type CorrelationPoint = {
-  imc: number
-  glicemia: number
-  idade: number
-  risco: RiskLevel
+  x: number
+  y: number
+  size: number
+  level: RiskLevel
 }
 
 export type DistributionPoint = {
@@ -41,17 +41,20 @@ export type ChartDatasetProfile = {
   rowCount: number
   columnCount: number
   primaryMetric: string
-  secondaryMetric: string
-  tertiaryMetric: string
+  secondaryMetric: string | null
+  tertiaryMetric: string | null
+  hasTimeDimension: boolean
+  groupingDimension: string
   trendData: TrendPoint[]
   histogramData: HistogramPoint[]
-  regionRiskData: RegionRiskPoint[]
+  segmentData: SegmentSharePoint[]
   correlationData: CorrelationPoint[]
   distributionData: DistributionPoint[]
 }
 
 export type ChartDatasetRecord = {
   id: string
+  profileVersion: number
   name: string
   uploadedAt: string
   sizeBytes: number
@@ -62,11 +65,36 @@ export type ChartDatasetRecord = {
 }
 
 type RowRecord = Record<string, unknown>
+type GroupedAggregate = {
+  primaryValues: number[]
+  secondaryValues: number[]
+  highCount: number
+  lowCount: number
+}
+type ParsedRowRecord = {
+  index: number
+  date: Date | null
+  trendCategory: string | null
+  segmentCategory: string | null
+  primary: number
+  secondary: number | null
+  tertiary: number | null
+}
+type CategoricalCandidate = {
+  column: string
+  validCount: number
+  valueCount: number
+  uniquenessRatio: number
+}
 
 const STORAGE_KEY = 'healthlens-chart-datasets'
 const ACTIVE_DATASET_KEY = 'healthlens-active-dataset-id'
+const PROFILE_VERSION = 2
 const MAX_ROWS_TO_PROFILE = 5000
 const MAX_SCATTER_POINTS = 240
+const MAX_TREND_GROUPS = 12
+const MAX_CATEGORY_VALUES = 40
+const MAX_SEGMENT_BARS = 10
 
 const SEED_DATASETS: Array<{ id: string; name: string; seed: number; sizeBytes: number }> = [
   { id: 'seed-cardio-2023', name: 'Pacientes_Cardio_2023.csv', seed: 17, sizeBytes: 2516582 },
@@ -163,13 +191,72 @@ const mean = (values: number[]) => {
   return total / values.length
 }
 
-const hashString = (value: string) => {
-  let hash = 0
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(index)
-    hash |= 0
+const sum = (values: number[]) => values.reduce((total, value) => total + value, 0)
+
+const normalizeLabel = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+
+const MONTH_LOOKUP: Array<{ index: number; tokens: string[] }> = [
+  { index: 0, tokens: ['jan', 'janeiro'] },
+  { index: 1, tokens: ['fev', 'fevereiro'] },
+  { index: 2, tokens: ['mar', 'marco'] },
+  { index: 3, tokens: ['abr', 'abril'] },
+  { index: 4, tokens: ['mai', 'maio'] },
+  { index: 5, tokens: ['jun', 'junho'] },
+  { index: 6, tokens: ['jul', 'julho'] },
+  { index: 7, tokens: ['ago', 'agosto'] },
+  { index: 8, tokens: ['set', 'setembro'] },
+  { index: 9, tokens: ['out', 'outubro'] },
+  { index: 10, tokens: ['nov', 'novembro'] },
+  { index: 11, tokens: ['dez', 'dezembro'] },
+]
+
+const MONTH_SHORT_LABELS = [
+  'Jan',
+  'Fev',
+  'Mar',
+  'Abr',
+  'Mai',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Set',
+  'Out',
+  'Nov',
+  'Dez',
+]
+
+const getMonthIndexFromLabel = (label: string) => {
+  const normalized = normalizeLabel(label)
+  const tokenized = normalized.replace(/[^a-z0-9]+/g, ' ')
+
+  for (const month of MONTH_LOOKUP) {
+    if (month.tokens.some((token) => tokenized === token || tokenized.startsWith(`${token} `))) {
+      return month.index
+    }
   }
-  return Math.abs(hash)
+
+  return -1
+}
+
+const getNumericColumnPriority = (column: string) => {
+  const normalized = normalizeLabel(column)
+  const monthIndex = getMonthIndexFromLabel(normalized)
+
+  if (/\btotal\b/.test(normalized)) return 100
+  if (
+    /\b(qtd|quantidade|nasc|nascimento|obito|caso|atendimento|internacao|populacao|valor)\b/.test(
+      normalized
+    )
+  )
+    return 70
+  if (monthIndex >= 0) return 55 - monthIndex
+  if (/^\d{4}$/.test(normalized)) return 50
+  return 10
 }
 
 const pseudoRandom = (seed: number) => {
@@ -189,15 +276,7 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 72)
 
-const detectDelimiter = (header: string) => {
-  const candidates: Array<',' | ';' | '\t'> = [',', ';', '\t']
-  const scores = candidates.map((delimiter) => ({
-    delimiter,
-    count: header.split(delimiter).length,
-  }))
-  scores.sort((a, b) => b.count - a.count)
-  return scores[0].delimiter
-}
+const DELIMITER_OPTIONS: Array<',' | ';' | '\t'> = [',', ';', '\t']
 
 const splitCsvRow = (line: string, delimiter: ',' | ';' | '\t') => {
   const values: string[] = []
@@ -230,6 +309,33 @@ const splitCsvRow = (line: string, delimiter: ',' | ';' | '\t') => {
   return values
 }
 
+const findCsvHeaderConfig = (lines: string[]) => {
+  const maxLinesToInspect = Math.min(lines.length, 40)
+
+  let bestHeaderIndex = 0
+  let bestDelimiter: ',' | ';' | '\t' = ';'
+  let bestColumnCount = 1
+
+  for (let index = 0; index < maxLinesToInspect; index += 1) {
+    const line = lines[index]
+    const bestForLine = DELIMITER_OPTIONS.map((delimiter) => ({
+      delimiter,
+      columnCount: splitCsvRow(line, delimiter).length,
+    })).sort((a, b) => b.columnCount - a.columnCount)[0]
+
+    if (bestForLine.columnCount <= bestColumnCount) continue
+    bestHeaderIndex = index
+    bestDelimiter = bestForLine.delimiter
+    bestColumnCount = bestForLine.columnCount
+  }
+
+  return {
+    headerIndex: bestHeaderIndex,
+    delimiter: bestDelimiter,
+    columnCount: bestColumnCount,
+  }
+}
+
 const parseCsv = (content: string): RowRecord[] => {
   const lines = content
     .replace(/\r\n/g, '\n')
@@ -239,22 +345,36 @@ const parseCsv = (content: string): RowRecord[] => {
 
   if (lines.length < 2) return []
 
-  const delimiter = detectDelimiter(lines[0])
-  const headers = splitCsvRow(lines[0], delimiter).map((value, index) => {
+  const { headerIndex, delimiter, columnCount } = findCsvHeaderConfig(lines)
+  if (columnCount < 2) return []
+
+  const headerRow = lines[headerIndex]
+  const headerCounts = new Map<string, number>()
+  const headers = splitCsvRow(headerRow, delimiter).map((value, index) => {
     const clean = value.replace(/^"|"$/g, '').trim()
-    return clean || `coluna_${index + 1}`
+    const baseName = clean || `coluna_${index + 1}`
+    const occurrences = (headerCounts.get(baseName) ?? 0) + 1
+    headerCounts.set(baseName, occurrences)
+    return occurrences > 1 ? `${baseName}_${occurrences}` : baseName
   })
 
-  return lines.slice(1).map((line) => {
-    const cells = splitCsvRow(line, delimiter)
+  const rows: RowRecord[] = []
+  const dataLines = lines.slice(headerIndex + 1)
+
+  dataLines.forEach((line) => {
+    const cells = splitCsvRow(line, delimiter).map((cell) => cell.replace(/^"|"$/g, '').trim())
+    const firstCell = cells[0] ?? ''
+    if (!cells.some((cell) => cell.length > 0)) return
+    if (/^(fonte|nota|observacao)\s*:/i.test(firstCell)) return
+
     const row: RowRecord = {}
-
     headers.forEach((header, index) => {
-      row[header] = (cells[index] ?? '').replace(/^"|"$/g, '').trim()
+      row[header] = cells[index] ?? ''
     })
-
-    return row
+    rows.push(row)
   })
+
+  return rows
 }
 
 const parseJsonRows = (content: string): RowRecord[] => {
@@ -303,7 +423,7 @@ const buildSyntheticProfile = (seed: number, metricHint = 'valor'): ChartDataset
   const random = pseudoRandom(seed)
   const trendData: TrendPoint[] = []
   const histogramData: HistogramPoint[] = []
-  const regionRiskData: RegionRiskPoint[] = []
+  const segmentData: SegmentSharePoint[] = []
   const correlationData: CorrelationPoint[] = []
 
   const months = [
@@ -324,34 +444,33 @@ const buildSyntheticProfile = (seed: number, metricHint = 'valor'): ChartDataset
   for (let index = 0; index < 12; index += 1) {
     const base = 88 + random() * 35
     const secondary = base + 8 + random() * 14
-    const admissions = 18 + random() * 16
 
     trendData.push({
-      month: months[index],
-      atendimentos: Math.round(160 + random() * 220),
-      glicemia: safeRound(base),
-      pressao: safeRound(secondary),
-      internacoes: Math.round(admissions),
-      adesao: clamp(Math.round(71 + random() * 21), 40, 99),
+      group: months[index],
+      sampleSize: Math.round(160 + random() * 220),
+      primary: safeRound(base),
+      secondary: safeRound(secondary),
+      highCount: Math.round(18 + random() * 16),
+      lowShare: clamp(Math.round(71 + random() * 21), 40, 99),
     })
   }
 
   for (let index = 0; index < 6; index += 1) {
     const total = Math.round(70 + random() * 120)
-    const critico = Math.round(total * (0.12 + random() * 0.22))
+    const aboveThreshold = Math.round(total * (0.12 + random() * 0.22))
     const start = 10 * index
 
     histogramData.push({
-      faixa: `${start}-${start + 9}`,
+      bucket: `${start}-${start + 9}`,
       total,
-      critico,
+      aboveThreshold,
     })
   }
 
   for (let index = 0; index < 5; index += 1) {
-    regionRiskData.push({
-      regiao: `Segmento ${index + 1}`,
-      risco: safeRound(14 + random() * 17),
+    segmentData.push({
+      segment: `Segmento ${index + 1}`,
+      ratio: safeRound(14 + random() * 17),
     })
   }
 
@@ -364,10 +483,10 @@ const buildSyntheticProfile = (seed: number, metricHint = 'valor'): ChartDataset
 
     const risk: RiskLevel = y > highRiskCut ? 'Alto' : y > lowRiskCut ? 'Moderado' : 'Baixo'
     correlationData.push({
-      imc: x,
-      glicemia: y,
-      idade: age,
-      risco: risk,
+      x,
+      y,
+      size: age,
+      level: risk,
     })
   }
 
@@ -383,13 +502,30 @@ const buildSyntheticProfile = (seed: number, metricHint = 'valor'): ChartDataset
     primaryMetric: metricHint,
     secondaryMetric: `${metricHint}_2`,
     tertiaryMetric: `${metricHint}_3`,
+    hasTimeDimension: true,
+    groupingDimension: 'Mes',
     trendData,
     histogramData,
-    regionRiskData,
+    segmentData,
     correlationData,
     distributionData,
   }
 }
+
+const buildEmptyProfile = (metricHint = 'valor'): ChartDatasetProfile => ({
+  rowCount: 0,
+  columnCount: 0,
+  primaryMetric: metricHint,
+  secondaryMetric: null,
+  tertiaryMetric: null,
+  hasTimeDimension: false,
+  groupingDimension: 'Sem agrupamento',
+  trendData: [],
+  histogramData: [],
+  segmentData: [],
+  correlationData: [],
+  distributionData: [],
+})
 
 const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
   const rows = rowsInput.slice(0, MAX_ROWS_TO_PROFILE)
@@ -401,12 +537,13 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
   )
 
   if (!rows.length || !columns.length) {
-    return buildSyntheticProfile(11, 'valor')
+    return buildEmptyProfile()
   }
 
   const rowCount = rows.length
   const columnCount = columns.length
 
+  const numericCoverageByColumn = new Map<string, number>()
   const numericSeries = columns
     .map((column) => {
       const series = rows.map((row) => toNumber(row[column]))
@@ -414,7 +551,16 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
       return { column, series, validCount }
     })
     .filter((entry) => entry.validCount >= Math.max(8, Math.floor(rowCount * 0.3)))
-    .sort((a, b) => b.validCount - a.validCount)
+    .sort((a, b) => {
+      if (b.validCount !== a.validCount) return b.validCount - a.validCount
+      const priorityDiff = getNumericColumnPriority(b.column) - getNumericColumnPriority(a.column)
+      if (priorityDiff !== 0) return priorityDiff
+      return a.column.localeCompare(b.column, 'pt-BR', { sensitivity: 'base' })
+    })
+
+  numericSeries.forEach((entry) => {
+    numericCoverageByColumn.set(entry.column, entry.validCount / Math.max(1, rowCount))
+  })
 
   const dateCandidates = columns
     .map((column) => {
@@ -425,70 +571,174 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
     .filter((entry) => entry.validCount >= Math.max(6, Math.floor(rowCount * 0.4)))
     .sort((a, b) => b.validCount - a.validCount)
 
-  if (!numericSeries.length) {
-    const fallbackValues = rows.map((row, index) => {
-      const base = Object.values(row)
-        .map((value) => toPlainText(value).length)
-        .reduce((sum, size) => sum + size, 0)
+  const primaryDateCandidate = dateCandidates[0] ?? null
+  const categoricalCandidates = columns
+    .filter((column) => column !== primaryDateCandidate?.column)
+    .map((column) => {
+      const valueCounts = new Map<string, number>()
+      let validCount = 0
 
-      return base + index * 0.35
+      rows.forEach((row) => {
+        const value = toPlainText(row[column]).trim()
+        if (!value || value.length > 80) return
+
+        validCount += 1
+        valueCounts.set(value, (valueCounts.get(value) ?? 0) + 1)
+      })
+
+      return {
+        column,
+        validCount,
+        valueCount: valueCounts.size,
+        uniquenessRatio: valueCounts.size / Math.max(1, validCount),
+      }
+    })
+    .filter((entry) => {
+      const numericCoverage = numericCoverageByColumn.get(entry.column) ?? 0
+      if (numericCoverage >= 0.7) return false
+      if (entry.validCount < Math.max(8, Math.floor(rowCount * 0.25))) return false
+      if (entry.valueCount < 2) return false
+      return entry.uniquenessRatio < 0.995
+    })
+    .sort((a, b) => {
+      if (b.validCount !== a.validCount) return b.validCount - a.validCount
+      if (a.uniquenessRatio !== b.uniquenessRatio) return a.uniquenessRatio - b.uniquenessRatio
+      return a.valueCount - b.valueCount
     })
 
-    const syntheticRows = fallbackValues.map((value, index) => ({
-      valor: value,
-      valor_2: value * (1.07 + (index % 4) * 0.02),
-      valor_3: value * (0.75 + (index % 3) * 0.04),
-      data: index,
-    }))
-
-    return buildProfileFromRows(syntheticRows)
+  if (!numericSeries.length) {
+    return {
+      rowCount,
+      columnCount,
+      primaryMetric: 'Sem metrica numerica',
+      secondaryMetric: null,
+      tertiaryMetric: null,
+      hasTimeDimension: false,
+      groupingDimension: categoricalCandidates[0]?.column ?? 'Sem agrupamento',
+      trendData: [],
+      histogramData: [],
+      segmentData: [],
+      correlationData: [],
+      distributionData: [],
+    }
   }
 
   const primarySeries = numericSeries[0]
-  const secondarySeries = numericSeries[1] ?? numericSeries[0]
-  const tertiarySeries = numericSeries[2] ?? numericSeries[0]
+  const secondarySeries =
+    numericSeries.find((entry) => entry.column !== primarySeries.column) ?? null
+  const tertiarySeries =
+    numericSeries.find(
+      (entry) => entry.column !== primarySeries.column && entry.column !== secondarySeries?.column
+    ) ?? null
 
   const primaryLabel = primarySeries.column
-  const secondaryLabel =
-    secondarySeries.column === primaryLabel ? `${primaryLabel}_2` : secondarySeries.column
-  const tertiaryLabel =
-    tertiarySeries.column === primaryLabel || tertiarySeries.column === secondarySeries.column
-      ? `${primaryLabel}_3`
-      : tertiarySeries.column
+  const secondaryLabel = secondarySeries?.column ?? null
+  const tertiaryLabel = tertiarySeries?.column ?? null
+  const trendCategoryCandidate: CategoricalCandidate | null =
+    categoricalCandidates.find(
+      (candidate) =>
+        candidate.valueCount <= MAX_TREND_GROUPS * 2 &&
+        candidate.uniquenessRatio <= 0.9 &&
+        candidate.valueCount <= Math.max(2, Math.floor(rowCount * 0.5))
+    ) ?? null
 
-  const records = rows.map((row, index) => {
+  const segmentCategoryCandidate: CategoricalCandidate | null =
+    categoricalCandidates.find(
+      (candidate) =>
+        candidate.valueCount <= Math.max(MAX_SEGMENT_BARS * 12, MAX_CATEGORY_VALUES) &&
+        candidate.uniquenessRatio <= 0.97
+    ) ?? null
+
+  const categoryForTrendColumn = trendCategoryCandidate?.column ?? null
+  const categoryForSegmentColumn = segmentCategoryCandidate?.column ?? null
+
+  const records: ParsedRowRecord[] = rows.map((row, index) => {
     const primaryValue = toNumber(row[primarySeries.column]) ?? 0
-    const secondaryValue = toNumber(row[secondarySeries.column]) ?? primaryValue * 1.04
-    const tertiaryRaw = toNumber(row[tertiarySeries.column]) ?? primaryValue * 0.64
-    const dateValue = dateCandidates.length ? toDate(row[dateCandidates[0].column]) : null
+    const secondaryValue = secondarySeries ? toNumber(row[secondarySeries.column]) : null
+    const tertiaryValue = tertiarySeries ? toNumber(row[tertiarySeries.column]) : null
+    const dateValue = primaryDateCandidate ? toDate(row[primaryDateCandidate.column]) : null
+    const trendCategoryRaw = categoryForTrendColumn
+      ? toPlainText(row[categoryForTrendColumn]).trim()
+      : ''
+    const segmentCategoryRaw = categoryForSegmentColumn
+      ? toPlainText(row[categoryForSegmentColumn]).trim()
+      : ''
 
     return {
       index,
       date: dateValue,
+      trendCategory: trendCategoryRaw || null,
+      segmentCategory: segmentCategoryRaw || null,
       primary: primaryValue,
       secondary: secondaryValue,
-      tertiary: tertiaryRaw,
+      tertiary: tertiaryValue,
     }
   })
 
+  const monthMetricSeries = numericSeries
+    .map((entry) => ({
+      ...entry,
+      monthIndex: getMonthIndexFromLabel(entry.column),
+    }))
+    .filter((entry) => entry.monthIndex >= 0)
+    .sort((a, b) => a.monthIndex - b.monthIndex)
+
+  const uniqueMonthCount = new Set(monthMetricSeries.map((entry) => entry.monthIndex)).size
+  const hasMonthlyLayout = uniqueMonthCount >= 6
+
   const primarySorted = records.map((item) => item.primary).sort((a, b) => a - b)
-  const secondarySorted = records.map((item) => item.secondary).sort((a, b) => a - b)
+  const referenceValues = records.map((item) => item.secondary ?? item.primary)
+  const referenceSorted = [...referenceValues].sort((a, b) => a - b)
 
   const p50Primary = percentile(primarySorted, 0.5)
-  const p50Secondary = percentile(secondarySorted, 0.5)
-  const p75Secondary = percentile(secondarySorted, 0.75)
+  const p50Reference = percentile(referenceSorted, 0.5)
+  const p75Reference = percentile(referenceSorted, 0.75)
+  const getReferenceValue = (record: ParsedRowRecord) => record.secondary ?? record.primary
+
+  let hasTimeDimension = false
+  let groupingDimension = 'Faixa amostral'
 
   const trendData = (() => {
-    if (dateCandidates.length) {
+    if (hasMonthlyLayout) {
+      hasTimeDimension = true
+      groupingDimension = 'Mes'
+
+      return monthMetricSeries.map((entry) => {
+        const values = entry.series.filter((value): value is number => value !== null)
+        if (!values.length) {
+          return {
+            group: MONTH_SHORT_LABELS[entry.monthIndex],
+            sampleSize: 0,
+            primary: 0,
+            secondary: null,
+            highCount: 0,
+            lowShare: 0,
+          }
+        }
+
+        const sorted = [...values].sort((a, b) => a - b)
+        const p50 = percentile(sorted, 0.5)
+        const p75 = percentile(sorted, 0.75)
+
+        return {
+          group: MONTH_SHORT_LABELS[entry.monthIndex],
+          sampleSize: values.length,
+          primary: safeRound(sum(values)),
+          secondary: null,
+          highCount: values.filter((value) => value > p75).length,
+          lowShare: safeRound(
+            (values.filter((value) => value <= p50).length / values.length) * 100
+          ),
+        }
+      })
+    }
+
+    if (primaryDateCandidate) {
       const grouped = new Map<
         string,
         {
           label: string
-          values: number[]
-          values2: number[]
-          values3: number[]
-          criticalCount: number
-          adherenceCount: number
+          aggregate: GroupedAggregate
         }
       >()
 
@@ -498,56 +748,108 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
         .forEach((record) => {
           const date = record.date as Date
           const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-          const found = grouped.get(key)
+          const current = grouped.get(key)
 
-          if (found) {
-            found.values.push(record.primary)
-            found.values2.push(record.secondary)
-            found.values3.push(record.tertiary)
-            found.criticalCount += record.secondary > p75Secondary ? 1 : 0
-            found.adherenceCount += record.primary <= p50Primary ? 1 : 0
+          if (current) {
+            current.aggregate.primaryValues.push(record.primary)
+            if (record.secondary !== null) current.aggregate.secondaryValues.push(record.secondary)
+            current.aggregate.highCount += getReferenceValue(record) > p75Reference ? 1 : 0
+            current.aggregate.lowCount += record.primary <= p50Primary ? 1 : 0
             return
           }
 
           grouped.set(key, {
             label: formatGroupLabel(date),
-            values: [record.primary],
-            values2: [record.secondary],
-            values3: [record.tertiary],
-            criticalCount: record.secondary > p75Secondary ? 1 : 0,
-            adherenceCount: record.primary <= p50Primary ? 1 : 0,
+            aggregate: {
+              primaryValues: [record.primary],
+              secondaryValues: record.secondary !== null ? [record.secondary] : [],
+              highCount: getReferenceValue(record) > p75Reference ? 1 : 0,
+              lowCount: record.primary <= p50Primary ? 1 : 0,
+            },
           })
         })
 
-      const groupedValues = Array.from(grouped.values()).slice(-12)
-      if (!groupedValues.length) return [] as TrendPoint[]
-
-      return groupedValues.map((item) => ({
-        month: item.label,
-        atendimentos: item.values.length,
-        glicemia: safeRound(mean(item.values)),
-        pressao: safeRound(mean(item.values2)),
-        internacoes: item.criticalCount,
-        adesao: safeRound((item.adherenceCount / item.values.length) * 100),
-      }))
+      const groupedValues = Array.from(grouped.values()).slice(-MAX_TREND_GROUPS)
+      if (groupedValues.length) {
+        hasTimeDimension = groupedValues.length > 1
+        groupingDimension = primaryDateCandidate.column
+        return groupedValues.map((item) => ({
+          group: item.label,
+          sampleSize: item.aggregate.primaryValues.length,
+          primary: safeRound(mean(item.aggregate.primaryValues)),
+          secondary: item.aggregate.secondaryValues.length
+            ? safeRound(mean(item.aggregate.secondaryValues))
+            : null,
+          highCount: item.aggregate.highCount,
+          lowShare: safeRound(
+            (item.aggregate.lowCount / item.aggregate.primaryValues.length) * 100
+          ),
+        }))
+      }
     }
 
-    const slices = 12
+    if (trendCategoryCandidate) {
+      const grouped = new Map<string, GroupedAggregate>()
+
+      records.forEach((record) => {
+        const categoryLabel = record.trendCategory ?? 'Nao informado'
+        const current = grouped.get(categoryLabel)
+
+        if (current) {
+          current.primaryValues.push(record.primary)
+          if (record.secondary !== null) current.secondaryValues.push(record.secondary)
+          current.highCount += getReferenceValue(record) > p75Reference ? 1 : 0
+          current.lowCount += record.primary <= p50Primary ? 1 : 0
+          return
+        }
+
+        grouped.set(categoryLabel, {
+          primaryValues: [record.primary],
+          secondaryValues: record.secondary !== null ? [record.secondary] : [],
+          highCount: getReferenceValue(record) > p75Reference ? 1 : 0,
+          lowCount: record.primary <= p50Primary ? 1 : 0,
+        })
+      })
+
+      const groupedValues = Array.from(grouped.entries())
+        .sort((a, b) => b[1].primaryValues.length - a[1].primaryValues.length)
+        .slice(0, MAX_TREND_GROUPS)
+        .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR', { sensitivity: 'base' }))
+
+      if (groupedValues.length) {
+        groupingDimension = trendCategoryCandidate.column
+        return groupedValues.map(([label, aggregate]) => ({
+          group: label,
+          sampleSize: aggregate.primaryValues.length,
+          primary: safeRound(mean(aggregate.primaryValues)),
+          secondary: aggregate.secondaryValues.length
+            ? safeRound(mean(aggregate.secondaryValues))
+            : null,
+          highCount: aggregate.highCount,
+          lowShare: safeRound((aggregate.lowCount / aggregate.primaryValues.length) * 100),
+        }))
+      }
+    }
+
+    const slices = MAX_TREND_GROUPS
     const bucketSize = Math.max(1, Math.ceil(records.length / slices))
     const aggregated: TrendPoint[] = []
 
     for (let start = 0; start < records.length; start += bucketSize) {
       const chunk = records.slice(start, start + bucketSize)
-      const adherenceCount = chunk.filter((item) => item.primary <= p50Primary).length
-      const criticalCount = chunk.filter((item) => item.secondary > p75Secondary).length
+      const lowCount = chunk.filter((item) => item.primary <= p50Primary).length
+      const highCount = chunk.filter((item) => getReferenceValue(item) > p75Reference).length
+      const secondaryValues = chunk
+        .map((item) => item.secondary)
+        .filter((value): value is number => value !== null)
 
       aggregated.push({
-        month: `P${aggregated.length + 1}`,
-        atendimentos: chunk.length,
-        glicemia: safeRound(mean(chunk.map((item) => item.primary))),
-        pressao: safeRound(mean(chunk.map((item) => item.secondary))),
-        internacoes: criticalCount,
-        adesao: safeRound((adherenceCount / Math.max(1, chunk.length)) * 100),
+        group: `P${aggregated.length + 1}`,
+        sampleSize: chunk.length,
+        primary: safeRound(mean(chunk.map((item) => item.primary))),
+        secondary: secondaryValues.length ? safeRound(mean(secondaryValues)) : null,
+        highCount,
+        lowShare: safeRound((lowCount / Math.max(1, chunk.length)) * 100),
       })
 
       if (aggregated.length >= slices) break
@@ -573,9 +875,9 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
       })
 
       return {
-        faixa: `${safeRound(start, 1)}-${safeRound(end, 1)}`,
+        bucket: `${safeRound(start, 1)}-${safeRound(end, 1)}`,
         total: items.length,
-        critico: items.filter((item) => item.secondary > p75Secondary).length,
+        aboveThreshold: items.filter((item) => getReferenceValue(item) > p75Reference).length,
       }
     })
 
@@ -584,47 +886,91 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
       ? histogram
       : [
           {
-            faixa: '0-1',
+            bucket: '0-1',
             total: records.length,
-            critico: records.filter((item) => item.secondary > p75Secondary).length,
+            aboveThreshold: records.filter((item) => getReferenceValue(item) > p75Reference).length,
           },
         ]
   })()
 
-  const regionRiskData = (() => {
+  const segmentData = (() => {
+    if (segmentCategoryCandidate) {
+      const grouped = new Map<string, { total: number; high: number }>()
+
+      records.forEach((record) => {
+        const key = record.segmentCategory ?? 'Nao informado'
+        const found = grouped.get(key)
+
+        if (found) {
+          found.total += 1
+          if (getReferenceValue(record) > p75Reference) found.high += 1
+          return
+        }
+
+        grouped.set(key, {
+          total: 1,
+          high: getReferenceValue(record) > p75Reference ? 1 : 0,
+        })
+      })
+
+      const items = Array.from(grouped.entries())
+        .map(([segment, counts]) => ({
+          segment,
+          ratio: counts.total ? safeRound((counts.high / counts.total) * 100, 1) : 0,
+          total: counts.total,
+        }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, MAX_SEGMENT_BARS)
+        .sort((a, b) => b.ratio - a.ratio)
+
+      const maxGroupSize = items.reduce((max, item) => Math.max(max, item.total), 0)
+      if (items.length && maxGroupSize > 2) {
+        return items.map((item) => ({
+          segment: item.segment,
+          ratio: item.ratio,
+        }))
+      }
+    }
+
     const slices = 5
-    const bucketSize = Math.max(1, Math.ceil(records.length / slices))
+    const sortedRecords = [...records].sort((a, b) => a.primary - b.primary)
+    const bucketSize = Math.max(1, Math.ceil(sortedRecords.length / slices))
 
     return Array.from({ length: slices }, (_, index) => {
-      const chunk = records.slice(index * bucketSize, index * bucketSize + bucketSize)
+      const chunk = sortedRecords.slice(index * bucketSize, index * bucketSize + bucketSize)
       const riskRatio = chunk.length
-        ? (chunk.filter((item) => item.secondary > p75Secondary).length / chunk.length) * 100
+        ? (chunk.filter((item) => getReferenceValue(item) > p75Reference).length / chunk.length) *
+          100
         : 0
 
       return {
-        regiao: `Segmento ${index + 1}`,
-        risco: safeRound(riskRatio, 1),
+        segment: `Q${index + 1}`,
+        ratio: safeRound(riskRatio, 1),
       }
     })
   })()
 
   const correlationData = (() => {
+    if (!secondaryLabel) return [] as CorrelationPoint[]
+
     const step = Math.max(1, Math.floor(records.length / MAX_SCATTER_POINTS))
     const sampled = records.filter((_, index) => index % step === 0).slice(0, MAX_SCATTER_POINTS)
 
     return sampled.map((item) => {
+      const referenceValue = getReferenceValue(item)
       const risk: RiskLevel =
-        item.secondary > p75Secondary
+        referenceValue > p75Reference
           ? 'Alto'
-          : item.secondary > p50Secondary
+          : referenceValue > p50Reference
             ? 'Moderado'
             : 'Baixo'
+      const bubbleSize = clamp(Math.abs(safeRound(item.tertiary ?? item.primary)), 1, 200)
 
       return {
-        imc: safeRound(item.primary, 2),
-        glicemia: safeRound(item.secondary, 2),
-        idade: clamp(safeRound(item.tertiary), 1, 120),
-        risco: risk,
+        x: safeRound(item.primary, 2),
+        y: safeRound(referenceValue, 2),
+        size: bubbleSize,
+        level: risk,
       }
     })
   })()
@@ -632,9 +978,21 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
   const distributionData = (() => {
     const seriesEntries: Array<{ label: string; values: number[] }> = [
       { label: primaryLabel, values: records.map((item) => item.primary) },
-      { label: secondaryLabel, values: records.map((item) => item.secondary) },
-      { label: tertiaryLabel, values: records.map((item) => item.tertiary) },
     ]
+
+    if (secondaryLabel) {
+      seriesEntries.push({
+        label: secondaryLabel,
+        values: records.map((item) => item.secondary ?? item.primary),
+      })
+    }
+
+    if (tertiaryLabel) {
+      seriesEntries.push({
+        label: tertiaryLabel,
+        values: records.map((item) => item.tertiary ?? item.primary),
+      })
+    }
 
     return seriesEntries
       .map((entry) => {
@@ -664,11 +1022,11 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
     primaryMetric: primaryLabel,
     secondaryMetric: secondaryLabel,
     tertiaryMetric: tertiaryLabel,
-    trendData: trendData.length
-      ? trendData
-      : buildSyntheticProfile(hashString(primaryLabel)).trendData,
+    hasTimeDimension,
+    groupingDimension,
+    trendData,
     histogramData,
-    regionRiskData,
+    segmentData,
     correlationData,
     distributionData,
   }
@@ -683,6 +1041,7 @@ const buildSeedDatasetRecord = (
   const extension = `.${name.split('.').pop()?.toLowerCase() ?? 'csv'}`
   return {
     id,
+    profileVersion: PROFILE_VERSION,
     name,
     uploadedAt: '2026-01-10T00:00:00.000Z',
     sizeBytes,
@@ -691,6 +1050,26 @@ const buildSeedDatasetRecord = (
     source: 'seed',
     profile: buildSyntheticProfile(seed, 'indice'),
   }
+}
+
+const isValidProfile = (profile: unknown): profile is ChartDatasetProfile => {
+  if (typeof profile !== 'object' || profile === null) return false
+  const maybe = profile as Partial<ChartDatasetProfile>
+
+  return Boolean(
+    typeof maybe.rowCount === 'number' &&
+    typeof maybe.columnCount === 'number' &&
+    typeof maybe.primaryMetric === 'string' &&
+    (typeof maybe.secondaryMetric === 'string' || maybe.secondaryMetric === null) &&
+    (typeof maybe.tertiaryMetric === 'string' || maybe.tertiaryMetric === null) &&
+    typeof maybe.hasTimeDimension === 'boolean' &&
+    typeof maybe.groupingDimension === 'string' &&
+    Array.isArray(maybe.trendData) &&
+    Array.isArray(maybe.histogramData) &&
+    Array.isArray(maybe.segmentData) &&
+    Array.isArray(maybe.correlationData) &&
+    Array.isArray(maybe.distributionData)
+  )
 }
 
 const readStorage = (): ChartDatasetRecord[] => {
@@ -707,11 +1086,12 @@ const readStorage = (): ChartDatasetRecord[] => {
       const maybe = item as Partial<ChartDatasetRecord>
       return Boolean(
         maybe.id &&
+        maybe.profileVersion === PROFILE_VERSION &&
         maybe.name &&
         maybe.uploadedAt &&
         maybe.extension &&
         maybe.profile &&
-        typeof maybe.profile === 'object'
+        isValidProfile(maybe.profile)
       )
     })
   } catch {
@@ -760,16 +1140,15 @@ export const createChartDatasetRecordFromFile = async (file: File): Promise<Char
 
   try {
     const rows = await parseRowsFromFile(file)
-    profile = rows.length
-      ? buildProfileFromRows(rows)
-      : buildSyntheticProfile(hashString(file.name + file.size))
+    profile = rows.length ? buildProfileFromRows(rows) : buildEmptyProfile()
   } catch {
-    profile = buildSyntheticProfile(hashString(file.name + file.size))
+    profile = buildEmptyProfile()
   }
 
   const id = `upload-${Date.now()}-${slugify(file.name)}`
   return {
     id,
+    profileVersion: PROFILE_VERSION,
     name: file.name,
     uploadedAt: new Date().toISOString(),
     sizeBytes: file.size,

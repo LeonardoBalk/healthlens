@@ -77,8 +77,13 @@ const PERIOD_OPTIONS: PeriodOption[] = [
 ]
 
 const INTEGER_FORMATTER = new Intl.NumberFormat('pt-BR')
+const DECIMAL_FORMATTER = new Intl.NumberFormat('pt-BR', {
+  maximumFractionDigits: 1,
+  minimumFractionDigits: 1,
+})
 
 const formatInteger = (value: number) => INTEGER_FORMATTER.format(Math.round(value))
+const formatPercent = (value: number) => `${DECIMAL_FORMATTER.format(value)}%`
 
 const mean = (values: number[]) => {
   if (!values.length) return 0
@@ -107,7 +112,7 @@ export default function ChartsPage() {
     if (active && datasets.some((dataset) => dataset.id === active)) return active
     return datasets[0]?.id ?? ''
   })
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodId>('6m')
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodId>('12m')
 
   const selectedDataset = useMemo(
     () => datasets.find((dataset) => dataset.id === selectedDatasetId) ?? null,
@@ -160,16 +165,16 @@ export default function ChartsPage() {
       <div className={styles.page}>
         <header className={styles.header}>
           <div className={styles.titleBlock}>
-            <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
+            <h1 className={`gradient-text ${styles.title}`}>Graficos</h1>
             <p className={styles.subtitle}>
-              Nenhum dataset disponível ainda. Faça upload para gerar visualizações automáticas.
+              Nenhum dataset disponivel ainda. Faca upload para gerar visualizacoes automaticas.
             </p>
           </div>
         </header>
 
         <section className={styles.emptyState}>
           <p className={styles.emptyStateText}>
-            Os gráficos agora são montados a partir de qualquer dataset enviado no upload.
+            Os graficos sao montados dinamicamente com base nas colunas presentes no arquivo.
           </p>
           <Button
             type="button"
@@ -187,24 +192,35 @@ export default function ChartsPage() {
   }
 
   const profile = selectedDataset.profile
-  const trendData = profile.trendData.slice(-selectedPeriodConfig.months)
+  const showTemporalControls = profile.hasTimeDimension && profile.trendData.length > 1
+  const trendData = showTemporalControls
+    ? profile.trendData.slice(-selectedPeriodConfig.months)
+    : profile.trendData
+  const visibleTrendData = trendData.length ? trendData : profile.trendData
+
   const histogramData = profile.histogramData
-  const regionRiskData = profile.regionRiskData
+  const segmentData = profile.segmentData
   const correlationData = profile.correlationData
   const distributionData = profile.distributionData
 
   const totalRegistros = profile.rowCount
-  const casosCriticos = histogramData.reduce((sum, point) => sum + point.critico, 0)
-  const mediaPrimaria = Math.round(mean(trendData.map((point) => point.glicemia)))
-  const mediaAdesao = Math.round(mean(trendData.map((point) => point.adesao)))
+  const pontosAcimaP75 = histogramData.reduce((sum, point) => sum + point.aboveThreshold, 0)
+  const mediaPrimaria = Math.round(mean(visibleTrendData.map((point) => point.primary)))
+  const mediaFaixaInferior = Math.round(mean(visibleTrendData.map((point) => point.lowShare)))
 
-  const firstTrendPoint = trendData[0]
-  const lastTrendPoint = trendData[trendData.length - 1]
-  const variacaoCriticos =
-    firstTrendPoint && firstTrendPoint.internacoes > 0
-      ? ((lastTrendPoint.internacoes - firstTrendPoint.internacoes) / firstTrendPoint.internacoes) *
-        100
+  const secondaryValues = visibleTrendData
+    .map((point) => point.secondary)
+    .filter((value): value is number => value !== null)
+  const mediaSecundaria = secondaryValues.length ? Math.round(mean(secondaryValues)) : null
+
+  const firstTrendPoint = visibleTrendData[0]
+  const lastTrendPoint = visibleTrendData[visibleTrendData.length - 1]
+  const variacaoP75 =
+    firstTrendPoint && firstTrendPoint.highCount > 0
+      ? ((lastTrendPoint.highCount - firstTrendPoint.highCount) / firstTrendPoint.highCount) * 100
       : 0
+
+  const contextHint = showTemporalControls ? 'na janela exibida' : 'nos grupos exibidos'
 
   const statCards: StatCard[] = [
     {
@@ -218,30 +234,40 @@ export default function ChartsPage() {
     },
     {
       key: 'primary',
-      label: `${profile.primaryMetric} médio`,
+      label: `${profile.primaryMetric} medio`,
       value: formatInteger(mediaPrimaria),
-      hint: 'valor médio na janela atual',
+      hint: `media ${contextHint}`,
       tone: chartPalette.primary,
       icon: Gauge,
       hintTone: 'neutral',
     },
+    mediaSecundaria !== null
+      ? {
+          key: 'secondary',
+          label: `${profile.secondaryMetric ?? 'Metrica secundaria'} media`,
+          value: formatInteger(mediaSecundaria),
+          hint: 'comparativo entre metricas numericas',
+          tone: chartPalette.success,
+          icon: TrendingUp,
+          hintTone: 'neutral',
+        }
+      : {
+          key: 'lower-band',
+          label: 'Faixa inferior (<= mediana)',
+          value: formatPercent(mediaFaixaInferior),
+          hint: `sobre ${profile.primaryMetric}`,
+          tone: chartPalette.success,
+          icon: TrendingUp,
+          hintTone: mediaFaixaInferior >= 50 ? 'up' : 'down',
+        },
     {
-      key: 'consistency',
-      label: 'Consistência por janela',
-      value: `${formatInteger(mediaAdesao)}%`,
-      hint: mediaAdesao >= 60 ? 'distribuição estável' : 'alta variação entre grupos',
-      tone: chartPalette.success,
-      icon: TrendingUp,
-      hintTone: mediaAdesao >= 60 ? 'up' : 'down',
-    },
-    {
-      key: 'alerts',
-      label: 'Pontos críticos',
-      value: formatInteger(casosCriticos),
-      hint: `${variacaoCriticos >= 0 ? '+' : ''}${variacaoCriticos.toFixed(1)}% na janela`,
+      key: 'above-p75',
+      label: 'Registros acima de P75',
+      value: formatInteger(pontosAcimaP75),
+      hint: `${variacaoP75 >= 0 ? '+' : ''}${DECIMAL_FORMATTER.format(variacaoP75)}% ${contextHint}`,
       tone: chartPalette.warning,
       icon: BarChart3,
-      hintTone: variacaoCriticos <= 0 ? 'up' : 'down',
+      hintTone: variacaoP75 <= 0 ? 'up' : 'down',
     },
   ]
 
@@ -262,25 +288,40 @@ export default function ChartsPage() {
     fontSize: 12,
   }
 
+  const hasSecondarySeries =
+    Boolean(profile.secondaryMetric) && visibleTrendData.some((point) => point.secondary !== null)
+  const hasCorrelation = Boolean(profile.secondaryMetric) && correlationData.length > 0
+
   const primaryLineName = `${profile.primaryMetric} (media)`
-  const secondaryLineName = `${profile.secondaryMetric} (media)`
-  const criticalLineName = 'Casos críticos'
+  const secondaryLineName = profile.secondaryMetric
+    ? `${profile.secondaryMetric} (media)`
+    : 'Metrica secundaria'
+  const highCountLineName = 'Acima de P75'
+
+  const trendTitle = profile.hasTimeDimension
+    ? 'Evolucao temporal das metricas'
+    : `Comparativo por ${profile.groupingDimension}`
+
+  const trendDescription = profile.hasTimeDimension
+    ? `Tendencia de ${profile.primaryMetric}${
+        profile.secondaryMetric ? `, ${profile.secondaryMetric}` : ''
+      } e registros acima do 75o percentil.`
+    : `Medias por ${profile.groupingDimension} com destaque para registros acima do 75o percentil.`
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.titleBlock}>
-          <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
+          <h1 className={`gradient-text ${styles.title}`}>Graficos</h1>
           <p className={styles.subtitle}>
-            Visualização automática para o dataset selecionado, com suporte a arquivos novos e
-            estruturas variadas.
+            Visualizacoes geradas automaticamente de acordo com a estrutura real do dataset.
           </p>
         </div>
 
         <div className={styles.headerActions}>
           <Button type="button" variant="outline" size="sm" className={styles.headerButton}>
             <Filter size={16} />
-            <span>Filtros avançados</span>
+            <span>Filtros avancados</span>
           </Button>
           <Button type="button" variant="outline" size="sm" className={styles.headerButton}>
             <Download size={16} />
@@ -289,7 +330,7 @@ export default function ChartsPage() {
         </div>
       </header>
 
-      <section className={styles.controlBar} aria-label="Controles da página de gráficos">
+      <section className={styles.controlBar} aria-label="Controles da pagina de graficos">
         <div className={styles.controlGroup}>
           <label className={styles.controlLabel} htmlFor="charts-dataset-select">
             Dataset ativo
@@ -315,28 +356,32 @@ export default function ChartsPage() {
         <div className={styles.periodBlock}>
           <span className={styles.controlLabel}>
             <CalendarRange size={14} />
-            <span>Janela temporal</span>
+            <span>{showTemporalControls ? 'Janela temporal' : 'Agrupamento detectado'}</span>
           </span>
-          <div className={styles.periodSwitch} role="tablist" aria-label="Selecionar período">
-            {PERIOD_OPTIONS.map((period) => (
-              <button
-                key={period.id}
-                type="button"
-                role="tab"
-                aria-selected={selectedPeriod === period.id}
-                className={`${styles.periodButton} ${
-                  selectedPeriod === period.id ? styles.periodButtonActive : ''
-                }`}
-                onClick={() => setSelectedPeriod(period.id)}
-              >
-                {period.label}
-              </button>
-            ))}
-          </div>
+          {showTemporalControls ? (
+            <div className={styles.periodSwitch} role="tablist" aria-label="Selecionar periodo">
+              {PERIOD_OPTIONS.map((period) => (
+                <button
+                  key={period.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selectedPeriod === period.id}
+                  className={`${styles.periodButton} ${
+                    selectedPeriod === period.id ? styles.periodButtonActive : ''
+                  }`}
+                  onClick={() => setSelectedPeriod(period.id)}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className={styles.controlLabel}>{profile.groupingDimension}</span>
+          )}
         </div>
       </section>
 
-      <section className={styles.statsGrid} aria-label="Resumo rápido de métricas">
+      <section className={styles.statsGrid} aria-label="Resumo rapido de metricas">
         {statCards.map((card) => {
           const Icon = card.icon
           const hintClassName =
@@ -368,27 +413,24 @@ export default function ChartsPage() {
         })}
       </section>
 
-      <section className={styles.chartsGrid} aria-label="Visualizações principais">
+      <section className={styles.chartsGrid} aria-label="Visualizacoes principais">
         <article className={`${styles.chartCard} ${styles.chartCardLarge}`}>
           <div className={styles.chartHeader}>
             <div className={styles.chartTitleWrap}>
               <h2 className={styles.chartTitle}>
                 <Activity size={18} className={styles.chartIcon} />
-                Série temporal principal
+                {trendTitle}
               </h2>
-              <p className={styles.chartDescription}>
-                Tendência de {profile.primaryMetric}, {profile.secondaryMetric} e casos críticos ao
-                longo da janela selecionada.
-              </p>
+              <p className={styles.chartDescription}>{trendDescription}</p>
             </div>
-            <span className={styles.chartBadge}>Série temporal</span>
+            <span className={styles.chartBadge}>Linha</span>
           </div>
           <div className={styles.chartViewport}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <LineChart data={visibleTrendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke={chartPalette.grid} strokeDasharray="3 3" />
                 <XAxis
-                  dataKey="month"
+                  dataKey="group"
                   stroke={chartPalette.muted}
                   tickLine={false}
                   axisLine={false}
@@ -421,28 +463,30 @@ export default function ChartsPage() {
                 <Line
                   yAxisId="left"
                   type="monotone"
-                  dataKey="glicemia"
+                  dataKey="primary"
                   name={primaryLineName}
                   stroke={chartPalette.primary}
                   strokeWidth={2.6}
                   dot={false}
                   activeDot={{ r: 4 }}
                 />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="pressao"
-                  name={secondaryLineName}
-                  stroke={chartPalette.info}
-                  strokeWidth={2.4}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
+                {hasSecondarySeries && (
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="secondary"
+                    name={secondaryLineName}
+                    stroke={chartPalette.info}
+                    strokeWidth={2.4}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                )}
                 <Line
                   yAxisId="right"
                   type="monotone"
-                  dataKey="internacoes"
-                  name={criticalLineName}
+                  dataKey="highCount"
+                  name={highCountLineName}
                   stroke={chartPalette.warning}
                   strokeDasharray="6 4"
                   strokeWidth={2.2}
@@ -459,10 +503,10 @@ export default function ChartsPage() {
             <div className={styles.chartTitleWrap}>
               <h2 className={styles.chartTitle}>
                 <BarChart3 size={18} className={styles.chartIcon} />
-                Risco por segmento
+                Percentual acima de P75 por grupo
               </h2>
               <p className={styles.chartDescription}>
-                Percentual de pontos críticos por faixa segmentada do dataset.
+                Compara grupos do dataset e mostra o percentual de registros acima do 75o percentil.
               </p>
             </div>
             <span className={styles.chartBadge}>Barras</span>
@@ -470,7 +514,7 @@ export default function ChartsPage() {
           <div className={styles.chartViewport}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={regionRiskData}
+                data={segmentData}
                 layout="vertical"
                 margin={{ top: 6, right: 8, left: 0, bottom: 6 }}
               >
@@ -488,7 +532,7 @@ export default function ChartsPage() {
                 />
                 <YAxis
                   type="category"
-                  dataKey="regiao"
+                  dataKey="segment"
                   width={84}
                   stroke={chartPalette.muted}
                   tickLine={false}
@@ -499,15 +543,15 @@ export default function ChartsPage() {
                   labelStyle={tooltipLabelStyle}
                   formatter={(value, name) =>
                     typeof value === 'number'
-                      ? [`${value.toFixed(1)}%`, String(name)]
+                      ? [formatPercent(value), String(name)]
                       : [String(value), String(name)]
                   }
                 />
-                <Bar dataKey="risco" name="Risco" radius={[0, 10, 10, 0]}>
-                  {regionRiskData.map((entry) => (
+                <Bar dataKey="ratio" name="Acima de P75" radius={[0, 10, 10, 0]}>
+                  {segmentData.map((entry) => (
                     <Cell
-                      key={entry.regiao}
-                      fill={getRiskBarColor(entry.risco, chartPalette)}
+                      key={entry.segment}
+                      fill={getRiskBarColor(entry.ratio, chartPalette)}
                       stroke="none"
                     />
                   ))}
@@ -522,10 +566,10 @@ export default function ChartsPage() {
             <div className={styles.chartTitleWrap}>
               <h2 className={styles.chartTitle}>
                 <BarChart3 size={18} className={styles.chartIcon} />
-                Distribuição de {profile.primaryMetric}
+                Distribuicao de {profile.primaryMetric}
               </h2>
               <p className={styles.chartDescription}>
-                Histograma automático da variável primária com destaque para pontos críticos.
+                Histograma automatico da metrica principal com destaque para valores acima de P75.
               </p>
             </div>
             <span className={styles.chartBadge}>Histograma</span>
@@ -535,7 +579,7 @@ export default function ChartsPage() {
               <BarChart data={histogramData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke={chartPalette.grid} strokeDasharray="3 3" />
                 <XAxis
-                  dataKey="faixa"
+                  dataKey="bucket"
                   stroke={chartPalette.muted}
                   tickLine={false}
                   axisLine={false}
@@ -553,8 +597,8 @@ export default function ChartsPage() {
                 <Legend wrapperStyle={legendStyle} />
                 <Bar dataKey="total" name="Total" fill={chartPalette.info} radius={[8, 8, 0, 0]} />
                 <Bar
-                  dataKey="critico"
-                  name="Críticos"
+                  dataKey="aboveThreshold"
+                  name="Acima de P75"
                   fill={chartPalette.danger}
                   radius={[8, 8, 0, 0]}
                 />
@@ -563,80 +607,103 @@ export default function ChartsPage() {
           </div>
         </article>
 
-        <article className={styles.chartCard}>
-          <div className={styles.chartHeader}>
-            <div className={styles.chartTitleWrap}>
-              <h2 className={styles.chartTitle}>
-                <ScatterChartIcon size={18} className={styles.chartIcon} />
-                Correlação principal
-              </h2>
+        {hasCorrelation ? (
+          <article className={styles.chartCard}>
+            <div className={styles.chartHeader}>
+              <div className={styles.chartTitleWrap}>
+                <h2 className={styles.chartTitle}>
+                  <ScatterChartIcon size={18} className={styles.chartIcon} />
+                  Correlacao principal
+                </h2>
+                <p className={styles.chartDescription}>
+                  Relacao entre {profile.primaryMetric} e {profile.secondaryMetric}, com tamanho da
+                  bolha baseado em {profile.tertiaryMetric ?? profile.primaryMetric}.
+                </p>
+              </div>
+              <span className={styles.chartBadge}>Scatter</span>
+            </div>
+            <div className={styles.chartViewport}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                  <CartesianGrid stroke={chartPalette.grid} strokeDasharray="3 3" />
+                  <XAxis
+                    type="number"
+                    dataKey="x"
+                    name={profile.primaryMetric}
+                    stroke={chartPalette.muted}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    type="number"
+                    dataKey="y"
+                    name={profile.secondaryMetric ?? 'Metrica secundaria'}
+                    stroke={chartPalette.muted}
+                    tickLine={false}
+                    axisLine={false}
+                    width={42}
+                  />
+                  <ZAxis
+                    type="number"
+                    dataKey="size"
+                    range={[90, 280]}
+                    name={profile.tertiaryMetric ?? profile.primaryMetric}
+                  />
+                  <Tooltip
+                    cursor={{ strokeDasharray: '4 4' }}
+                    contentStyle={tooltipContentStyle}
+                    labelStyle={tooltipLabelStyle}
+                    formatter={(value, name) =>
+                      typeof value === 'number'
+                        ? [String(value), String(name)]
+                        : [String(value), String(name)]
+                    }
+                  />
+                  <Scatter data={correlationData} dataKey="y">
+                    {correlationData.map((entry, index) => (
+                      <Cell
+                        key={`${entry.x}-${entry.y}-${index}`}
+                        fill={getRiskColor(entry.level, chartPalette)}
+                      />
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+            <div className={styles.scatterLegend}>
+              {['Baixo', 'Moderado', 'Alto'].map((risk) => (
+                <span key={risk} className={styles.scatterLegendItem}>
+                  <span
+                    className={styles.scatterLegendDot}
+                    style={{ backgroundColor: getRiskColor(risk, chartPalette) }}
+                  />
+                  {risk}
+                </span>
+              ))}
+            </div>
+          </article>
+        ) : (
+          <article className={styles.chartCard}>
+            <div className={styles.chartHeader}>
+              <div className={styles.chartTitleWrap}>
+                <h2 className={styles.chartTitle}>
+                  <ScatterChartIcon size={18} className={styles.chartIcon} />
+                  Correlacao principal
+                </h2>
+                <p className={styles.chartDescription}>
+                  Este dataset nao possui duas metricas numericas suficientes para grafico de
+                  correlacao.
+                </p>
+              </div>
+              <span className={styles.chartBadge}>N/A</span>
+            </div>
+            <div className={styles.chartViewport}>
               <p className={styles.chartDescription}>
-                Relação entre {profile.primaryMetric} e {profile.secondaryMetric}, com tamanho da
-                bolha baseado em {profile.tertiaryMetric}.
+                Adicione pelo menos duas colunas numericas para habilitar esta visualizacao.
               </p>
             </div>
-            <span className={styles.chartBadge}>Scatter</span>
-          </div>
-          <div className={styles.chartViewport}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                <CartesianGrid stroke={chartPalette.grid} strokeDasharray="3 3" />
-                <XAxis
-                  type="number"
-                  dataKey="imc"
-                  name={profile.primaryMetric}
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  type="number"
-                  dataKey="glicemia"
-                  name={profile.secondaryMetric}
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                  width={42}
-                />
-                <ZAxis
-                  type="number"
-                  dataKey="idade"
-                  range={[90, 280]}
-                  name={profile.tertiaryMetric}
-                />
-                <Tooltip
-                  cursor={{ strokeDasharray: '4 4' }}
-                  contentStyle={tooltipContentStyle}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(value, name) =>
-                    typeof value === 'number'
-                      ? [`${value}`, String(name)]
-                      : [String(value), String(name)]
-                  }
-                />
-                <Scatter data={correlationData} dataKey="glicemia">
-                  {correlationData.map((entry, index) => (
-                    <Cell
-                      key={`${entry.imc}-${entry.glicemia}-${index}`}
-                      fill={getRiskColor(entry.risco, chartPalette)}
-                    />
-                  ))}
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
-          <div className={styles.scatterLegend}>
-            {['Baixo', 'Moderado', 'Alto'].map((risk) => (
-              <span key={risk} className={styles.scatterLegendItem}>
-                <span
-                  className={styles.scatterLegendDot}
-                  style={{ backgroundColor: getRiskColor(risk, chartPalette) }}
-                />
-                {risk}
-              </span>
-            ))}
-          </div>
-        </article>
+          </article>
+        )}
 
         <article className={`${styles.chartCard} ${styles.chartCardLarge}`}>
           <div className={styles.chartHeader}>
@@ -646,11 +713,10 @@ export default function ChartsPage() {
                 Faixa interquartil dos indicadores
               </h2>
               <p className={styles.chartDescription}>
-                Visualização estilo box-plot para as métricas mais relevantes encontradas no
-                dataset.
+                Visualizacao estilo box-plot para os indicadores numericos mais relevantes.
               </p>
             </div>
-            <span className={styles.chartBadge}>Distribuição</span>
+            <span className={styles.chartBadge}>Distribuicao</span>
           </div>
           <div className={styles.chartViewport}>
             <ResponsiveContainer width="100%" height="100%">
@@ -695,7 +761,7 @@ export default function ChartsPage() {
                 <Line
                   type="monotone"
                   dataKey="min"
-                  name="Mínimo"
+                  name="Minimo"
                   stroke={chartPalette.info}
                   strokeWidth={2}
                   strokeDasharray="6 4"
@@ -704,7 +770,7 @@ export default function ChartsPage() {
                 <Line
                   type="monotone"
                   dataKey="max"
-                  name="Máximo"
+                  name="Maximo"
                   stroke={chartPalette.warning}
                   strokeWidth={2}
                   strokeDasharray="6 4"
@@ -714,8 +780,7 @@ export default function ChartsPage() {
             </ResponsiveContainer>
           </div>
           <p className={styles.distributionHint}>
-            O perfil e os gráficos são gerados automaticamente a partir da estrutura e dos valores
-            detectados no upload.
+            O perfil e os graficos sao gerados automaticamente a partir da estrutura detectada.
           </p>
         </article>
       </section>

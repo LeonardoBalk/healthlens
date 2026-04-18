@@ -3,6 +3,7 @@ import dotenv from 'dotenv'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import multer from 'multer'
 import path from 'node:path'
+import { supabase } from './lib/supabase.js'
 
 dotenv.config()
 
@@ -61,6 +62,20 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
   return res.status(500).json({ message: 'Erro inesperado ao processar o upload.' })
 })
+
+// mantém o Supabase ativo (evita pausa do banco)
+const KEEP_ALIVE_INTERVAL = 12 * 60 * 60 * 1000
+setInterval(() => {
+  void (async () => {
+    try {
+      const { error } = await supabase.from('datasets').select('id').limit(1)
+      if (error) throw error
+      console.info('Ping executado com sucesso.')
+    } catch (err) {
+      console.error('Falha no ping do Supabase:', err)
+    }
+  })()
+}, KEEP_ALIVE_INTERVAL)
 
 app.listen(PORT, () => {
   console.info(`Server running on http://localhost:${PORT}`)

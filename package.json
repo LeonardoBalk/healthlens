@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "pnpm run dev",
     "dev": "concurrently --names \"client,server,processing\" --prefix-colors \"cyan,green,magenta\" \"pnpm --filter client dev\" \"pnpm --filter server dev\" \"cd processing && .\\\\venv\\\\Scripts\\\\uvicorn main:app --reload --port 8000\"",
     "dev:client": "pnpm --filter client dev",
     "dev:server": "pnpm --filter server dev",

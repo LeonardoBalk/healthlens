@@ -8,6 +8,7 @@ import {
   Database,
   Settings,
   User,
+  LogOut,
   ChevronRight,
   ChevronLeft,
   Moon,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo/Logo'
 import { useTheme } from '@/contexts/ThemeContext'
+import { supabase } from '@/lib/supabase'
 
 const navItems = [
   { key: 'overview', path: '/', label: 'Overview', icon: LayoutDashboard },
@@ -31,6 +33,7 @@ interface SidebarProps {
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
@@ -45,6 +48,21 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const handleGoToLanding = () => {
     void navigate('/')
     onClose()
+  }
+
+  const handleSignOut = async () => {
+    if (!supabase || isSigningOut) {
+      return
+    }
+
+    try {
+      setIsSigningOut(true)
+      await supabase.auth.signOut()
+    } finally {
+      setIsSigningOut(false)
+      void navigate('/login', { replace: true })
+      onClose()
+    }
   }
 
   return (
@@ -126,6 +144,15 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <button className="sidebar__item" title={!isExpanded ? 'Perfil' : undefined}>
             <User size={22} strokeWidth={1.8} className="sidebar__icon" />
             <span className="sidebar__label">Perfil</span>
+          </button>
+          <button
+            className="sidebar__item"
+            onClick={() => void handleSignOut()}
+            title={!isExpanded ? 'Sair' : undefined}
+            disabled={isSigningOut}
+          >
+            <LogOut size={22} strokeWidth={1.8} className="sidebar__icon" />
+            <span className="sidebar__label">{isSigningOut ? 'Saindo...' : 'Sair'}</span>
           </button>
         </div>
       </aside>

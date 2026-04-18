@@ -8,6 +8,7 @@ import ReportsPage from './pages/ReportsPage'
 import LoginPage from './pages/LoginPage/LoginPage'
 import DatasetUploadPage from './pages/DatasetUploadPage/DatasetUploadPage'
 import DatasetsPage from './pages/DatasetsPage/DatasetsPage'
+import RequireAuth from './components/auth/RequireAuth'
 import './App.scss'
 
 import { ThemeProvider } from './contexts/ThemeContext'
@@ -20,13 +21,15 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<Navigate to="/" replace />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/datasets" element={<Layout />}>
-            <Route index element={<OverviewPage />} />
-            <Route path="list" element={<DatasetsPage />} />
-            <Route path="new" element={<DatasetUploadPage />} />
-            <Route path="series" element={<SeriesPage />} />
-            <Route path="charts" element={<ChartsPage />} />
-            <Route path="reports" element={<ReportsPage />} />
+          <Route element={<RequireAuth />}>
+            <Route path="/datasets" element={<Layout />}>
+              <Route index element={<OverviewPage />} />
+              <Route path="list" element={<DatasetsPage />} />
+              <Route path="new" element={<DatasetUploadPage />} />
+              <Route path="series" element={<SeriesPage />} />
+              <Route path="charts" element={<ChartsPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+            </Route>
           </Route>
           <Route path="/overview" element={<Navigate to="/datasets" replace />} />
           <Route path="/list" element={<Navigate to="/datasets/list" replace />} />

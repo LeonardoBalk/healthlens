@@ -13,6 +13,8 @@ type ToastState = {
 
 const DASHBOARD_PATH = '/datasets'
 
+type AuthMode = 'login' | 'signup'
+
 function GoogleIcon() {
   return (
     <svg
@@ -45,10 +47,15 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const navigate = useNavigate()
+
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [mode, setMode] = useState<AuthMode>('login')
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-  const [isMagicLinkLoading, setIsMagicLinkLoading] = useState(false)
+  const [isLoginLoading, setIsLoginLoading] = useState(false)
+  const [isSignupLoading, setIsSignupLoading] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
 
   useEffect(() => {
@@ -135,7 +142,7 @@ export default function LoginPage() {
     void handleGoogleLogin()
   }
 
-  const handleMagicLink = async (event: FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (!supabase) {
@@ -147,37 +154,101 @@ export default function LoginPage() {
     }
 
     const normalizedEmail = email.trim()
-    if (!normalizedEmail) return
+    if (!normalizedEmail || !password.trim()) return
 
     try {
-      setIsMagicLinkLoading(true)
-      const { error } = await supabase.auth.signInWithOtp({
+      setIsLoginLoading(true)
+      const { error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
-        options: {
-          emailRedirectTo: `${window.location.origin}${DASHBOARD_PATH}`,
-        },
+        password,
       })
 
       if (error) {
         setToast({
           type: 'error',
-          message: `Erro ao enviar o Magic Link: ${error.message}`,
+          message: `Nao foi possivel entrar: ${error.message}`,
         })
         return
       }
 
-      setToast({
-        type: 'success',
-        message: 'Link de acesso enviado. Verifique seu email para continuar.',
-      })
-      setEmail('')
+      void navigate(DASHBOARD_PATH, { replace: true })
     } finally {
-      setIsMagicLinkLoading(false)
+      setIsLoginLoading(false)
     }
   }
 
-  const onMagicLinkSubmit = (event: FormEvent<HTMLFormElement>) => {
-    void handleMagicLink(event)
+  const onLoginSubmit = (event: FormEvent<HTMLFormElement>) => {
+    void handleLogin(event)
+  }
+
+  const handleSignup = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!supabase) {
+      setToast({
+        type: 'error',
+        message: 'Configure SUPABASE_URL e SUPABASE_ANON_KEY para habilitar o login.',
+      })
+      return
+    }
+
+    const normalizedEmail = email.trim()
+    const normalizedPassword = password.trim()
+    const normalizedConfirmPassword = confirmPassword.trim()
+
+    if (!normalizedEmail || !normalizedPassword || !normalizedConfirmPassword) return
+
+    if (normalizedPassword.length < 8) {
+      setToast({
+        type: 'error',
+        message: 'A senha deve ter pelo menos 8 caracteres.',
+      })
+      return
+    }
+
+    if (normalizedPassword !== normalizedConfirmPassword) {
+      setToast({
+        type: 'error',
+        message: 'As senhas nao conferem.',
+      })
+      return
+    }
+
+    try {
+      setIsSignupLoading(true)
+
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password: normalizedPassword,
+      })
+
+      if (signupError) {
+        setToast({
+          type: 'error',
+          message: `Nao foi possivel criar a conta: ${signupError.message}`,
+        })
+        return
+      }
+
+      // Se o Supabase retornar uma sessão, o email não precisa de confirmação = login automático
+      if (data.session) {
+        void navigate(DASHBOARD_PATH, { replace: true })
+        return
+      }
+
+      // Se não retornou sessão, é porque a verificação por e-mail AINDA ESTÁ ATIVADA no painel
+      setToast({
+        type: 'error',
+        message:
+          'Aviso: Você precisa desativar a "Confirmação de Email" no painel do Supabase (Authentication > Providers > Email).',
+      })
+    } finally {
+      setIsSignupLoading(false)
+    }
+  }
+
+  const onSignupSubmit = (event: FormEvent<HTMLFormElement>) => {
+    void handleSignup(event)
   }
 
   const handleBack = () => {
@@ -208,10 +279,30 @@ export default function LoginPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.glowTop} />
-      <div className={styles.glowBottom} />
+      {/* Brand Section Left */}
+      <div className={styles.brandSection}>
+        <div className={styles.brandGlow} />
 
-      <main className={styles.card}>
+        <div className={styles.brandLogo}>
+          <Logo size={40} className={styles.logoIcon} />
+          <span className={styles.brandName}>HealthLens</span>
+        </div>
+
+        <div className={styles.brandContent}>
+          <h1 className={styles.brandTitle}>
+            Seu dataset clínico,
+            <br />
+            entendido em segundos.
+          </h1>
+          <p className={styles.brandSubtitle}>
+            Solução inteligente para análise de dados médicos, relatórios e detecção de anomalias
+            com agilidade e precisão automatizada.
+          </p>
+        </div>
+      </div>
+
+      {/* Form Section Right */}
+      <main className={styles.formSection}>
         <div className={styles.topActions}>
           <button type="button" className={styles.backButton} onClick={handleBack}>
             <ArrowLeft size={16} />
@@ -227,64 +318,154 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <Logo size={104} className={styles.logo} />
-        <h1 className={styles.title}>HealthLens</h1>
-        <p className={styles.tagline}>Seu dataset clinico, entendido em segundos.</p>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className={styles.googleButton}
-          onClick={onGoogleLoginClick}
-          disabled={isGoogleLoading || isMagicLinkLoading || !isSupabaseConfigured}
-        >
-          {isGoogleLoading ? (
-            <LoaderCircle className={styles.loadingIcon} size={18} />
-          ) : (
-            <GoogleIcon />
-          )}
-          <span>{isGoogleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
-        </Button>
-
-        <div className={styles.divider} role="separator" aria-label="ou">
-          <span>ou</span>
-        </div>
-
-        <form className={styles.form} onSubmit={onMagicLinkSubmit}>
-          <label className={styles.label} htmlFor="magic-link-email">
-            Email
-          </label>
-          <input
-            id="magic-link-email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="voce@clinica.com"
-            className={styles.input}
-            autoComplete="email"
-            required
-            disabled={isMagicLinkLoading || isGoogleLoading}
-          />
+        <div className={styles.formWrapper}>
+          <div className={styles.formHeader}>
+            <h2 className={styles.formTitle}>
+              {mode === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta'}
+            </h2>
+            <p className={styles.formSubtitle}>
+              {mode === 'login'
+                ? 'Insira seus dados para acessar seus datasets.'
+                : 'Preencha os dados abaixo para começar.'}
+            </p>
+          </div>
 
           <Button
-            type="submit"
+            type="button"
+            variant="outline"
             size="lg"
-            className={styles.magicButton}
-            disabled={
-              isMagicLinkLoading || isGoogleLoading || !email.trim() || !isSupabaseConfigured
-            }
+            className={styles.googleButton}
+            onClick={onGoogleLoginClick}
+            disabled={isGoogleLoading || isLoginLoading || isSignupLoading || !isSupabaseConfigured}
           >
-            {isMagicLinkLoading && <LoaderCircle className={styles.loadingIcon} size={18} />}
-            <span>{isMagicLinkLoading ? 'Enviando link...' : 'Enviar link de acesso'}</span>
+            {isGoogleLoading ? (
+              <LoaderCircle className={styles.loadingIcon} size={18} />
+            ) : (
+              <GoogleIcon />
+            )}
+            <span>{isGoogleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
           </Button>
-        </form>
 
-        {!isSupabaseConfigured && (
-          <p className={styles.configurationHint}>
-            Defina as variaveis de ambiente do Supabase para ativar os dois fluxos de login.
-          </p>
-        )}
+          <div className={styles.divider} role="separator" aria-label="ou">
+            <span>ou</span>
+          </div>
+
+          <form
+            className={styles.form}
+            onSubmit={mode === 'login' ? onLoginSubmit : onSignupSubmit}
+          >
+            <label className={styles.label} htmlFor="auth-email">
+              Email
+            </label>
+            <input
+              id="auth-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="voce@clinica.com"
+              className={styles.input}
+              autoComplete="email"
+              required
+              disabled={isLoginLoading || isSignupLoading}
+            />
+
+            <label className={styles.label} htmlFor="auth-password">
+              Senha
+            </label>
+            <input
+              id="auth-password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={
+                mode === 'signup' ? 'Crie uma senha com no minimo 8 caracteres' : 'Sua senha'
+              }
+              className={styles.input}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              minLength={8}
+              required
+              disabled={isLoginLoading || isSignupLoading}
+            />
+
+            {mode === 'signup' && (
+              <>
+                <label className={styles.label} htmlFor="auth-confirm-password">
+                  Confirmar senha
+                </label>
+                <input
+                  id="auth-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Repita sua senha"
+                  className={styles.input}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                  disabled={isSignupLoading}
+                />
+              </>
+            )}
+
+            <Button
+              type="submit"
+              size="lg"
+              className={styles.magicButton}
+              disabled={
+                mode === 'login'
+                  ? isLoginLoading || !email.trim() || !password.trim() || !isSupabaseConfigured
+                  : isSignupLoading ||
+                    !email.trim() ||
+                    !password.trim() ||
+                    !confirmPassword.trim() ||
+                    !isSupabaseConfigured
+              }
+            >
+              {(isLoginLoading || isSignupLoading) && (
+                <LoaderCircle className={styles.loadingIcon} size={18} />
+              )}
+              <span>
+                {mode === 'login'
+                  ? isLoginLoading
+                    ? 'Entrando...'
+                    : 'Entrar'
+                  : isSignupLoading
+                    ? 'Criando conta...'
+                    : 'Criar conta'}
+              </span>
+            </Button>
+
+            {mode === 'login' ? (
+              <p className={styles.modeHint}>
+                Nao possui conta?
+                <button
+                  type="button"
+                  className={styles.modeHintAction}
+                  onClick={() => setMode('signup')}
+                >
+                  Criar conta
+                </button>
+              </p>
+            ) : (
+              <p className={styles.modeHint}>
+                Ja possui conta?
+                <button
+                  type="button"
+                  className={styles.modeHintAction}
+                  onClick={() => setMode('login')}
+                >
+                  Entrar
+                </button>
+              </p>
+            )}
+          </form>
+
+          {!isSupabaseConfigured && (
+            <p className={styles.configurationHint}>
+              Defina as variaveis de ambiente do Supabase para ativar cadastro e login.
+            </p>
+          )}
+        </div>
       </main>
 
       {toast && (

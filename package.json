@@ -2,14 +2,45 @@
   "name": "healthlens",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
+    "start": "pnpm run dev",
     "dev": "concurrently --names \"client,server,processing\" --prefix-colors \"cyan,green,magenta\" \"pnpm --filter client dev\" \"pnpm --filter server dev\" \"cd processing && .\\\\venv\\\\Scripts\\\\uvicorn main:app --reload --port 8000\"",
     "dev:client": "pnpm --filter client dev",
     "dev:server": "pnpm --filter server dev",
     "dev:processing": "cd processing && .\\venv\\Scripts\\uvicorn main:app --reload --port 8000",
-    "install:all": "pnpm install && cd processing && .\\venv\\Scripts\\pip install -r requirements.txt"
+    "install:all": "pnpm install && cd processing && .\\venv\\Scripts\\pip install -r requirements.txt",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,scss,css,md}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,scss,css,md}\" --ignore-path .gitignore",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{scss,css,json,md}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "@eslint/js": "^9.39.4",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.57.2"
   }
 }

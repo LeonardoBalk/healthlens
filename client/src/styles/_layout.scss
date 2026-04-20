@@ -1,0 +1,216 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+// ─── Theme Variables ────────────────────────────────────────────────────────
+body {
+  background-color: var(--color-background, $color-background);
+  color: var(--color-text-primary, $color-text-primary);
+  transition:
+    background-color $transition-base,
+    color $transition-base;
+}
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
+.layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+
+  &__main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; // Prevent flex item from overflowing
+  }
+
+  &__content {
+    flex: 1;
+    padding: $space-6;
+    overflow-y: auto;
+    @include custom-scrollbar;
+
+    @include lg {
+      padding: $space-8;
+    }
+  }
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+.sidebar {
+  width: 256px;
+  background-color: var(--color-surface, $color-surface);
+  border-right: 1px solid var(--color-border, $color-border);
+  display: flex;
+  flex-direction: column;
+  transition:
+    transform $transition-base,
+    background-color $transition-base;
+  z-index: 40;
+
+  // Mobile - hidden by default
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+
+  &--open {
+    transform: translateX(0);
+  }
+
+  // Desktop - static side panel
+  @include lg {
+    position: static;
+    transform: translateX(0);
+  }
+
+  &__logo {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    padding: 0 $space-6;
+    border-bottom: 1px solid var(--color-border, $color-border);
+  }
+
+  &__logo-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius-md;
+    color: inherit;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+    }
+  }
+
+  &__nav {
+    flex: 1;
+    padding: $space-4 $space-3;
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+    overflow-y: auto;
+    @include custom-scrollbar;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-3 $space-4;
+    border-radius: $radius-md;
+    color: var(--color-text-secondary, $color-text-secondary);
+    font-weight: 500;
+    transition: all $transition-fast;
+    width: 100%;
+
+    &:hover {
+      background-color: var(--color-surface, $color-surface);
+      color: var(--color-text-primary, $color-text-primary);
+    }
+
+    &--active {
+      background-color: rgba(255, 45, 85, 0.12);
+      color: $color-primary;
+
+      &:hover {
+        background-color: rgba(255, 45, 85, 0.12);
+      }
+    }
+  }
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 30;
+
+  @include lg {
+    display: none;
+  }
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+.header {
+  height: 64px;
+  background-color: var(--color-surface, $color-surface);
+  border-bottom: 1px solid var(--color-border, $color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 $space-6;
+  transition: background-color $transition-base;
+  z-index: 20;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: $space-4;
+  }
+
+  &__menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-md;
+    color: var(--color-text-primary, $color-text-primary);
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: var(--color-surface, $color-surface);
+    }
+
+    @include lg {
+      display: none; // Hide on desktop
+    }
+  }
+
+  &__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: 0.875rem;
+
+    &-root {
+      color: var(--color-text-secondary, $color-text-secondary);
+      font-weight: 500;
+    }
+
+    &-sep {
+      color: var(--color-border-strong, $color-border-strong);
+    }
+
+    &-current {
+      color: var(--color-text-primary, $color-text-primary);
+      font-weight: 600;
+    }
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+
+  &__theme-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-full;
+    color: var(--color-text-primary, $color-text-primary);
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: var(--color-surface, $color-surface);
+    }
+  }
+}

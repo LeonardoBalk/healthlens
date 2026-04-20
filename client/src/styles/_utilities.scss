@@ -1,62 +1,266 @@
-@use 'variables' as *;
-@use 'mixins' as *;
+@use "variables" as *;
+@use "mixins" as *;
 
 // ─── Utility Classes ──────────────────────────────────────────────────────────
+// Equivalente ao que Tailwind faria — classes prontas para usar no JSX
 
-// Layout
+// ── Layout ────────────────────────────────────────────────────────────────────
 .container {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 $space-6;
-
   @include lg {
     padding: 0 $space-8;
   }
 }
 
-.flex { display: flex; }
-.flex-col { @include flex-col; }
-.flex-center { @include flex-center; }
-.flex-between { @include flex-between; }
-.gap-2 { gap: $space-2; }
-.gap-3 { gap: $space-3; }
-.gap-4 { gap: $space-4; }
-.gap-6 { gap: $space-6; }
-.gap-8 { gap: $space-8; }
+.flex {
+  display: flex;
+}
+.flex-col {
+  @include flex-col;
+}
+.flex-center {
+  @include flex-center;
+}
+.flex-between {
+  @include flex-between;
+}
+.flex-col-center {
+  @include flex-col-center;
+}
+.flex-1 {
+  flex: 1;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
 
-// Spacing
-.mt-4  { margin-top: $space-4; }
-.mt-6  { margin-top: $space-6; }
-.mt-8  { margin-top: $space-8; }
-.mb-4  { margin-bottom: $space-4; }
-.mb-6  { margin-bottom: $space-6; }
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $space-6;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-6;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $space-6;
+}
 
-// Text utilities
-.text-muted   { color: $color-text-muted; }
-.text-subtle  { color: $color-text-subtle; }
-.text-primary { color: $color-primary; }
-.text-accent  { color: $color-accent; }
-.text-success { color: $color-success; }
-.text-danger  { color: $color-danger; }
-.text-warning { color: $color-warning; }
+.gap-1 {
+  gap: $space-1;
+}
+.gap-2 {
+  gap: $space-2;
+}
+.gap-3 {
+  gap: $space-3;
+}
+.gap-4 {
+  gap: $space-4;
+}
+.gap-6 {
+  gap: $space-6;
+}
+.gap-8 {
+  gap: $space-8;
+}
 
-.text-sm  { font-size: 0.875rem; }
-.text-xs  { font-size: 0.75rem; }
-.text-lg  { font-size: 1.125rem; }
-.text-xl  { font-size: 1.25rem; }
+// ── Spacing ───────────────────────────────────────────────────────────────────
+.mt-2 {
+  margin-top: $space-2;
+}
+.mt-4 {
+  margin-top: $space-4;
+}
+.mt-6 {
+  margin-top: $space-6;
+}
+.mt-8 {
+  margin-top: $space-8;
+}
+.mb-2 {
+  margin-bottom: $space-2;
+}
+.mb-4 {
+  margin-bottom: $space-4;
+}
+.mb-6 {
+  margin-bottom: $space-6;
+}
+.mb-8 {
+  margin-bottom: $space-8;
+}
+.p-4 {
+  padding: $space-4;
+}
+.p-6 {
+  padding: $space-6;
+}
+.px-4 {
+  padding-left: $space-4;
+  padding-right: $space-4;
+}
+.py-4 {
+  padding-top: $space-4;
+  padding-bottom: $space-4;
+}
 
-.font-mono   { font-family: $font-mono; }
-.font-medium { font-weight: 500; }
-.font-bold   { font-weight: 700; }
-.truncate    { @include truncate; }
+// ── Background (equivalente ao bg-* do Tailwind) ──────────────────────────────
+.bg-background {
+  background-color: var(--color-background);
+}
+.bg-surface {
+  background-color: var(--color-surface);
+}
+.bg-surface-2 {
+  background-color: var(--color-surface-2);
+}
+.bg-primary {
+  background-color: var(--color-primary);
+}
 
-// Gradient text
+// ── Texto (equivalente ao text-* do Tailwind) ─────────────────────────────────
+.text-primary {
+  color: var(--color-text-primary);
+}
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+.text-muted {
+  color: var(--color-text-muted);
+}
+.text-accent {
+  color: var(--color-primary);
+}
+.text-success {
+  color: var(--color-success);
+}
+.text-warning {
+  color: var(--color-warning);
+}
+.text-danger {
+  color: var(--color-danger);
+}
+.text-info {
+  color: var(--color-info);
+}
+
+.text-xs {
+  font-size: $font-size-xs;
+}
+.text-sm {
+  font-size: $font-size-sm;
+}
+.text-base {
+  font-size: $font-size-base;
+}
+.text-lg {
+  font-size: $font-size-lg;
+}
+.text-xl {
+  font-size: $font-size-xl;
+}
+.text-2xl {
+  font-size: $font-size-2xl;
+}
+.text-3xl {
+  font-size: $font-size-3xl;
+}
+
+.font-normal {
+  font-weight: $font-weight-normal;
+}
+.font-medium {
+  font-weight: $font-weight-medium;
+}
+.font-semibold {
+  font-weight: $font-weight-semibold;
+}
+.font-bold {
+  font-weight: $font-weight-bold;
+}
+.font-mono {
+  font-family: $font-mono;
+}
+
+.text-center {
+  text-align: center;
+}
+.text-right {
+  text-align: right;
+}
+.truncate {
+  @include truncate;
+}
+
+// ── Gradient text ─────────────────────────────────────────────────────────────
 .gradient-text {
   @include gradient-text;
 }
+.gradient-text-primary {
+  @include gradient-text(var(--color-primary), var(--color-primary-light));
+}
 
-// Visibility
+// ── Border ────────────────────────────────────────────────────────────────────
+.border {
+  border: 1px solid var(--color-border);
+}
+.border-strong {
+  border: 1px solid var(--color-border-strong);
+}
+.border-primary {
+  border: 1px solid var(--color-primary);
+}
+
+.rounded-sm {
+  border-radius: $radius-sm;
+}
+.rounded-md {
+  border-radius: $radius-md;
+}
+.rounded-lg {
+  border-radius: $radius-lg;
+}
+.rounded-xl {
+  border-radius: $radius-xl;
+}
+.rounded-full {
+  border-radius: $radius-full;
+}
+
+// ── Cards ─────────────────────────────────────────────────────────────────────
+.card {
+  @include card;
+}
+.card-hover {
+  @include card-hover;
+}
+
+// ── Badges ────────────────────────────────────────────────────────────────────
+.badge-critical {
+  @include badge-critical;
+}
+.badge-warning {
+  @include badge-warning;
+}
+.badge-success {
+  @include badge-success;
+}
+.badge-info {
+  @include badge-info;
+}
+.badge-neutral {
+  @include badge-neutral;
+}
+
+// ── Acessibilidade ────────────────────────────────────────────────────────────
 .sr-only {
   position: absolute;
   width: 1px;

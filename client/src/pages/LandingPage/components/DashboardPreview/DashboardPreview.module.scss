@@ -1,0 +1,177 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.previewSection {
+  position: relative;
+  z-index: 2;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 $space-6 6rem;
+}
+
+.dashboardMockup {
+  @include card;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.1),
+    0 0 30px var(--color-primary-glow);
+}
+
+.mockupHeader {
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  padding: $space-3 $space-4;
+  @include flex-center;
+  position: relative;
+}
+
+.dots {
+  position: absolute;
+  left: $space-4;
+  display: flex;
+  gap: 6px;
+
+  span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+}
+
+.dotClose {
+  background: #ff5555;
+}
+.dotMin {
+  background: #ffb86c;
+}
+.dotMax {
+  background: #50fa7b;
+}
+
+.mockupTitle {
+  font-family: $font-mono;
+  font-size: $font-size-sm;
+  color: var(--color-text-muted);
+}
+
+.mockupBody {
+  display: flex;
+  height: 400px;
+}
+
+.mockupSidebar {
+  width: 60px;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: $space-4;
+  gap: $space-4;
+
+  @include md {
+    width: 200px;
+    align-items: stretch;
+    padding: $space-4;
+  }
+}
+
+.fakeItem {
+  height: 24px;
+  border-radius: $radius-sm;
+  background: var(--color-surface-2);
+  width: 24px;
+
+  @include md {
+    width: 100%;
+  }
+}
+
+.fakeItemActive {
+  @extend .fakeItem;
+  background: rgba(255, 45, 85, 0.1);
+  border-left: 2px solid var(--color-primary);
+}
+
+.mockupContent {
+  flex: 1;
+  padding: $space-6;
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+  background: var(--color-background);
+}
+
+.mockupMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-4;
+}
+
+.mockupCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-md;
+  padding: $space-3;
+}
+
+.mockupMainRow {
+  display: flex;
+  gap: $space-4;
+  flex: 1;
+}
+
+.mockupChart {
+  flex: 2;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-md;
+  padding: $space-4;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  width: 100%;
+  height: 100%;
+  gap: 8px;
+}
+
+.barLine {
+  flex: 1;
+  background: rgba(255, 45, 85, 0.5);
+  border-radius: 2px 2px 0 0;
+  max-width: 30px;
+}
+
+.mockupChat {
+  flex: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-md;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.chatMessage {
+  padding: $space-3;
+  margin: $space-2;
+  background: var(--color-surface-2);
+  border-radius: $radius-md;
+  border-left: 2px solid var(--color-info);
+}
+
+.chatInputFake {
+  padding: $space-3;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: $font-size-xs;
+  margin-top: auto;
+}

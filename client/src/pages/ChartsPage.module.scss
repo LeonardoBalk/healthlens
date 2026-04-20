@@ -1,0 +1,382 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.page {
+  width: min(100%, 78rem);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  max-width: 66ch;
+}
+
+.title {
+  font-size: clamp(1.75rem, 3vw, 2.3rem);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-base;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+.headerButton {
+  min-width: 9.5rem;
+}
+
+.controlBar {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-2xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: $space-4;
+  padding: $space-4 $space-5;
+  flex-wrap: wrap;
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 18rem;
+  flex: 1;
+}
+
+.controlLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+}
+
+.select {
+  width: 100%;
+  min-height: 2.7rem;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border-strong, $color-border-strong);
+  background: var(--color-surface-2, $color-surface-2);
+  color: var(--color-text-primary, $color-text-primary);
+  padding: 0 $space-4;
+  transition:
+    border-color $transition-fast,
+    box-shadow $transition-fast;
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-primary, $color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, $color-primary) 22%, transparent);
+  }
+}
+
+.periodBlock {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.periodSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: 4px;
+  border-radius: $radius-full;
+  border: 1px solid var(--color-border, $color-border);
+  background: var(--color-surface-2, $color-surface-2);
+}
+
+.periodButton {
+  min-width: 3.2rem;
+  border-radius: $radius-full;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 0.03em;
+  padding: $space-2 $space-3;
+  transition:
+    color $transition-fast,
+    border-color $transition-fast,
+    background-color $transition-fast;
+
+  &:hover {
+    color: var(--color-text-primary, $color-text-primary);
+  }
+}
+
+.periodButtonActive {
+  background: color-mix(in srgb, var(--color-primary, $color-primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary, $color-primary) 42%, transparent);
+  color: var(--color-primary, $color-primary);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $space-4;
+}
+
+.statCard {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+  padding: $space-4;
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+}
+
+.statIcon {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: $radius-md;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.statBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.statLabel {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+}
+
+.statValue {
+  color: var(--color-text-primary, $color-text-primary);
+  font-size: clamp(1.15rem, 1.9vw, 1.6rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.statHint {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.hintUp {
+  color: var(--color-success, $color-success);
+}
+
+.hintDown {
+  color: var(--color-danger, $color-danger);
+}
+
+.hintNeutral {
+  color: var(--color-text-muted, $color-text-muted);
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-4;
+}
+
+.chartCard {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-2xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+  padding: $space-4;
+  min-height: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.chartCardLarge {
+  grid-column: 1 / -1;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-3;
+}
+
+.chartTitleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.chartTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--color-text-primary, $color-text-primary);
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+}
+
+.chartIcon {
+  color: var(--color-primary, $color-primary);
+}
+
+.chartDescription {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-sm;
+  max-width: 62ch;
+}
+
+.chartBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-full;
+  border: 1px solid var(--color-border-strong, $color-border-strong);
+  background: var(--color-surface-2, $color-surface-2);
+  color: var(--color-text-secondary, $color-text-secondary);
+  padding: $space-1 $space-3;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+}
+
+.chartViewport {
+  flex: 1;
+  min-height: 14.5rem;
+}
+
+.scatterLegend {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+.scatterLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-xs;
+}
+
+.scatterLegendDot {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+}
+
+.distributionHint {
+  margin-top: -$space-2;
+  color: var(--color-text-muted, $color-text-muted);
+  font-size: $font-size-xs;
+}
+
+.emptyState {
+  border: 1px dashed var(--color-border-strong, $color-border-strong);
+  border-radius: $radius-2xl;
+  background: color-mix(in srgb, var(--color-surface, $color-surface) 84%, transparent);
+  padding: $space-8;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-4;
+}
+
+.emptyStateText {
+  color: var(--color-text-secondary, $color-text-secondary);
+  max-width: 54ch;
+}
+
+@media (max-width: 74rem) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 64rem) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartCardLarge {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 48rem) {
+  .headerActions {
+    width: 100%;
+  }
+
+  .headerButton {
+    flex: 1;
+  }
+
+  .controlBar {
+    padding: $space-4;
+  }
+
+  .controlGroup {
+    min-width: 100%;
+  }
+
+  .periodBlock {
+    width: 100%;
+  }
+
+  .periodSwitch {
+    width: 100%;
+  }
+
+  .periodButton {
+    flex: 1;
+  }
+}
+
+@media (max-width: 40rem) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartCard {
+    padding: $space-4 $space-3;
+  }
+
+  .chartBadge {
+    display: none;
+  }
+
+  .emptyState {
+    align-items: stretch;
+    padding: $space-6;
+  }
+}

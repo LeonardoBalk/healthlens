@@ -1,0 +1,67 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  border-radius: $radius-full;
+  font-family: $font-sans;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: all $transition-base;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.primary {
+  background: var(--color-primary);
+  color: white;
+  border: 1px solid transparent;
+
+  &:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+    @include glow(var(--color-primary-glow));
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+.outline {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
+
+  &:hover:not(:disabled) {
+    background: var(--color-surface-2);
+    border-color: var(--color-border-strong);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+/* Sizes */
+.sm {
+  padding: $space-1 $space-3;
+  font-size: $font-size-sm;
+}
+
+.md {
+  padding: $space-2 $space-4;
+  font-size: $font-size-base;
+}
+
+.lg {
+  padding: $space-3 $space-6;
+  font-size: $font-size-lg;
+}

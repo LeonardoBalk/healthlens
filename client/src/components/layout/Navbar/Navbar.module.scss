@@ -1,0 +1,90 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  backdrop-filter: blur(12px);
+}
+
+.navContainer {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 $space-6;
+  @include flex-between;
+  height: 4.5rem;
+
+  @include lg {
+    padding: 0 $space-8;
+  }
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  user-select: none;
+}
+
+.brandText {
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.brandHealth {
+  font-weight: $font-weight-bold;
+  font-size: $font-size-xl;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.brandLens {
+  font-weight: $font-weight-bold;
+  font-size: $font-size-xl;
+  color: $color-primary;
+}
+
+.navLinks {
+  display: none;
+  gap: $space-8;
+
+  @include md {
+    @include flex-center;
+  }
+}
+
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  user-select: none;
+}
+
+.themeToggle {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: $radius-full;
+  border: 1px solid var(--color-border-strong, rgba(255, 255, 255, 0.2));
+  color: var(--color-text-primary, $color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition:
+    border-color $transition-fast,
+    background-color $transition-fast;
+
+  svg {
+    display: block;
+  }
+
+  &:hover {
+    border-color: var(--color-border-strong, rgba(255, 255, 255, 0.35));
+    background: color-mix(in srgb, var(--color-surface-2, $color-surface-2) 70%, transparent);
+  }
+}

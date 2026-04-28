@@ -3,7 +3,7 @@ import dotenv from 'dotenv'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import multer from 'multer'
 import path from 'node:path'
-import { supabase } from './lib/supabase.js'
+import { supabase } from './lib/supabase'
 
 dotenv.config()
 

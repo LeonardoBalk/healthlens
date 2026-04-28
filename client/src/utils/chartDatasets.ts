@@ -1158,3 +1158,147 @@ export const createChartDatasetRecordFromFile = async (file: File): Promise<Char
     profile,
   }
 }
+
+// ─── Export utilities ───────────────────────────────────────────────────────────
+
+const escapeCsvCell = (value: unknown): string => {
+  if (value == null) return ''
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  const text = typeof value === 'object' ? JSON.stringify(value) : String(value)
+  if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`
+  return text
+}
+
+const arrayToCsvLines = (headers: string[], rows: Record<string, unknown>[]): string => {
+  const headerLine = headers.map(escapeCsvCell).join(',')
+  const dataLines = rows.map((row) => headers.map((header) => escapeCsvCell(row[header])).join(','))
+  return [headerLine, ...dataLines].join('\n')
+}
+
+const triggerDownload = (content: string, fileName: string, mimeType: string) => {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileName
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  URL.revokeObjectURL(url)
+}
+
+export const exportDatasetAsCsv = (dataset: ChartDatasetRecord) => {
+  const profile = dataset.profile
+  const sections: string[] = []
+  const baseName = dataset.name.replace(/\.[^.]+$/, '')
+
+  // Info section
+  sections.push(
+    [
+      '# Informacoes do Dataset',
+      `Nome,${escapeCsvCell(dataset.name)}`,
+      `Data de Upload,${escapeCsvCell(dataset.uploadedAt)}`,
+      `Tamanho,${escapeCsvCell(dataset.sizeLabel)}`,
+      `Linhas,${profile.rowCount}`,
+      `Colunas,${profile.columnCount}`,
+      `Metrica Primaria,${escapeCsvCell(profile.primaryMetric)}`,
+      `Metrica Secundaria,${escapeCsvCell(profile.secondaryMetric ?? 'N/A')}`,
+      `Dimensao Temporal,${profile.hasTimeDimension ? 'Sim' : 'Nao'}`,
+      `Agrupamento,${escapeCsvCell(profile.groupingDimension)}`,
+    ].join('\n')
+  )
+
+  // Trend data
+  if (profile.trendData.length) {
+    const trendHeaders = [
+      'Grupo',
+      'Amostra',
+      'Primaria',
+      'Secundaria',
+      'Acima P75',
+      '% Abaixo Mediana',
+    ]
+    const trendRows = profile.trendData.map((point) => ({
+      Grupo: point.group,
+      Amostra: point.sampleSize,
+      Primaria: point.primary,
+      Secundaria: point.secondary ?? '',
+      'Acima P75': point.highCount,
+      '% Abaixo Mediana': point.lowShare,
+    }))
+    sections.push(`\n# Dados de Tendencia\n${arrayToCsvLines(trendHeaders, trendRows)}`)
+  }
+
+  // Histogram data
+  if (profile.histogramData.length) {
+    const histHeaders = ['Faixa', 'Total', 'Acima Limite']
+    const histRows = profile.histogramData.map((point) => ({
+      Faixa: point.bucket,
+      Total: point.total,
+      'Acima Limite': point.aboveThreshold,
+    }))
+    sections.push(`\n# Histograma\n${arrayToCsvLines(histHeaders, histRows)}`)
+  }
+
+  // Segment data
+  if (profile.segmentData.length) {
+    const segHeaders = ['Segmento', 'Percentual Acima P75']
+    const segRows = profile.segmentData.map((point) => ({
+      Segmento: point.segment,
+      'Percentual Acima P75': point.ratio,
+    }))
+    sections.push(`\n# Segmentos\n${arrayToCsvLines(segHeaders, segRows)}`)
+  }
+
+  // Correlation data
+  if (profile.correlationData.length) {
+    const corrHeaders = ['X', 'Y', 'Tamanho', 'Nivel']
+    const corrRows = profile.correlationData.map((point) => ({
+      X: point.x,
+      Y: point.y,
+      Tamanho: point.size,
+      Nivel: point.level,
+    }))
+    sections.push(`\n# Correlacao\n${arrayToCsvLines(corrHeaders, corrRows)}`)
+  }
+
+  // Distribution data
+  if (profile.distributionData.length) {
+    const distHeaders = ['Indicador', 'Min', 'Q1', 'Mediana', 'Q3', 'Max', 'IQR']
+    const distRows = profile.distributionData.map((point) => ({
+      Indicador: point.indicador,
+      Min: point.min,
+      Q1: point.q1,
+      Mediana: point.median,
+      Q3: point.q3,
+      Max: point.max,
+      IQR: point.iqr,
+    }))
+    sections.push(`\n# Distribuicao\n${arrayToCsvLines(distHeaders, distRows)}`)
+  }
+
+  const content = sections.join('\n')
+  triggerDownload(content, `${baseName}_exportado.csv`, 'text/csv;charset=utf-8;')
+}
+
+export const exportDatasetAsJson = (dataset: ChartDatasetRecord) => {
+  const baseName = dataset.name.replace(/\.[^.]+$/, '')
+  const exportPayload = {
+    nome: dataset.name,
+    dataUpload: dataset.uploadedAt,
+    tamanho: dataset.sizeLabel,
+    perfil: dataset.profile,
+  }
+  const content = JSON.stringify(exportPayload, null, 2)
+  triggerDownload(content, `${baseName}_exportado.json`, 'application/json;charset=utf-8;')
+}
+
+export type ExportFormat = 'csv' | 'json'
+
+export const exportDataset = (dataset: ChartDatasetRecord, format: ExportFormat = 'csv') => {
+  if (format === 'json') {
+    exportDatasetAsJson(dataset)
+  } else {
+    exportDatasetAsCsv(dataset)
+  }
+}

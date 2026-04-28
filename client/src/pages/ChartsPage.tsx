@@ -32,6 +32,7 @@ import {
 import { Button } from '@/components/ui/Button/Button'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
+  exportDatasetAsCsv,
   getActiveChartDatasetId,
   getAllChartDatasets,
   setActiveChartDatasetId,
@@ -323,7 +324,13 @@ export default function ChartsPage() {
             <Filter size={16} />
             <span>Filtros avancados</span>
           </Button>
-          <Button type="button" variant="outline" size="sm" className={styles.headerButton}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={styles.headerButton}
+            onClick={() => exportDatasetAsCsv(selectedDataset)}
+          >
             <Download size={16} />
             <span>Exportar CSV</span>
           </Button>

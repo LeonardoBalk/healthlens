@@ -8,7 +8,6 @@ HealthLens é uma ferramenta web para visualização e exploração de dados de 
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?logo=supabase&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Gemini-AI-4285F4?logo=google&logoColor=white)
 
-
 ## Sobre
 
 O HealthLens recebe arquivos de dados de saúde (CSV, JSON, XLSX), processa com Pandas, gera visualizações interativas com Recharts e oferece um chat com IA (Google Gemini) para exploração dos dados em linguagem natural. Pensado para profissionais e gestores de saúde que precisam interpretar dados do DATASUS, e-SUS e SINAN sem conhecimento técnico em ciência de dados.
@@ -24,14 +23,14 @@ O HealthLens recebe arquivos de dados de saúde (CSV, JSON, XLSX), processa com 
 
 ## Stack
 
-| Camada | Tecnologia |
-|---|---|
-| Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Recharts |
-| Backend | Express.js, TypeScript |
-| Processamento | Python 3.11, FastAPI, Pandas |
-| Banco de dados | Supabase (PostgreSQL) |
-| IA | Google Gemini API |
-| Deploy | Vercel (frontend), Railway (backend e processamento) |
+| Camada         | Tecnologia                                                    |
+| -------------- | ------------------------------------------------------------- |
+| Frontend       | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Recharts |
+| Backend        | Express.js, TypeScript                                        |
+| Processamento  | Python 3.11, FastAPI, Pandas                                  |
+| Banco de dados | Supabase (PostgreSQL)                                         |
+| IA             | Google Gemini API                                             |
+| Deploy         | Vercel (frontend), Railway (backend e processamento)          |
 
 ## Rodando localmente
 
@@ -41,6 +40,7 @@ cd healthlens
 ```
 
 **Frontend:**
+
 ```bash
 cd client
 pnpm install
@@ -49,6 +49,7 @@ pnpm dev
 ```
 
 **Backend:**
+
 ```bash
 cd server
 pnpm install
@@ -57,6 +58,7 @@ pnpm dev
 ```
 
 **Processamento:**
+
 ```bash
 cd processing
 python -m venv venv
@@ -70,7 +72,7 @@ uvicorn main:app --reload --port 8000
 
 ```env
 # client/.env
-VITE_API_URL=http://localhost:3001
+VITE_API_URL=http://localhost:3003
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 

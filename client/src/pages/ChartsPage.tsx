@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -32,9 +32,11 @@ import {
 import { Button } from '@/components/ui/Button/Button'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
+  fetchChartDatasets,
   getActiveChartDatasetId,
-  getAllChartDatasets,
+  getSinanDisplayLabel,
   setActiveChartDatasetId,
+  type ChartDatasetRecord,
 } from '@/utils/chartDatasets'
 import styles from './ChartsPage.module.scss'
 
@@ -84,11 +86,8 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('pt-BR', {
 
 const formatInteger = (value: number) => INTEGER_FORMATTER.format(Math.round(value))
 const formatPercent = (value: number) => `${DECIMAL_FORMATTER.format(value)}%`
-
-const mean = (values: number[]) => {
-  if (!values.length) return 0
-  return values.reduce((sum, value) => sum + value, 0) / values.length
-}
+const formatMetricValue = (value: number) =>
+  Math.abs(value) >= 1000 ? formatInteger(value) : DECIMAL_FORMATTER.format(value)
 
 const getRiskColor = (risk: string, palette: ChartPalette) => {
   if (risk === 'Alto') return palette.danger
@@ -106,18 +105,48 @@ export default function ChartsPage() {
   const navigate = useNavigate()
   const { theme } = useTheme()
 
-  const datasets = useMemo(() => getAllChartDatasets(), [])
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string>(() => {
-    const active = getActiveChartDatasetId()
-    if (active && datasets.some((dataset) => dataset.id === active)) return active
-    return datasets[0]?.id ?? ''
-  })
+  const [datasets, setDatasets] = useState<ChartDatasetRecord[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string>('')
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodId>('12m')
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadDatasets = async () => {
+      setIsLoading(true)
+      const loadedDatasets = await fetchChartDatasets()
+
+      if (cancelled) return
+
+      setDatasets(loadedDatasets)
+
+      const active = getActiveChartDatasetId()
+      const nextSelectedDatasetId =
+        active && loadedDatasets.some((dataset) => dataset.id === active)
+          ? active
+          : (loadedDatasets[0]?.id ?? '')
+
+      setSelectedDatasetId(nextSelectedDatasetId)
+      if (nextSelectedDatasetId) {
+        setActiveChartDatasetId(nextSelectedDatasetId)
+      }
+      setIsLoading(false)
+    }
+
+    void loadDatasets()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const selectedDataset = useMemo(
     () => datasets.find((dataset) => dataset.id === selectedDatasetId) ?? null,
     [datasets, selectedDatasetId]
   )
+
+  const fieldMapping = selectedDataset?.fieldMapping ?? null
 
   const selectedPeriodConfig =
     PERIOD_OPTIONS.find((period) => period.id === selectedPeriod) ?? PERIOD_OPTIONS[1]
@@ -160,6 +189,19 @@ export default function ChartsPage() {
     }
   }, [theme])
 
+  if (isLoading) {
+    return (
+      <div className={styles.page}>
+        <header className={styles.header}>
+          <div className={styles.titleBlock}>
+            <h1 className={`gradient-text ${styles.title}`}>Graficos</h1>
+            <p className={styles.subtitle}>Carregando datasets do Supabase...</p>
+          </div>
+        </header>
+      </div>
+    )
+  }
+
   if (!selectedDataset) {
     return (
       <div className={styles.page}>
@@ -192,6 +234,15 @@ export default function ChartsPage() {
   }
 
   const profile = selectedDataset.profile
+  const primaryMetricLabel = getSinanDisplayLabel(profile.primaryMetric, fieldMapping)
+  const secondaryMetricLabel = profile.secondaryMetric
+    ? getSinanDisplayLabel(profile.secondaryMetric, fieldMapping)
+    : null
+  const tertiaryMetricLabel = profile.tertiaryMetric
+    ? getSinanDisplayLabel(profile.tertiaryMetric, fieldMapping)
+    : null
+  const groupingDimensionLabel =
+    getSinanDisplayLabel(profile.groupingDimension, fieldMapping) || profile.groupingDimension
   const showTemporalControls = profile.hasTimeDimension && profile.trendData.length > 1
   const trendData = showTemporalControls
     ? profile.trendData.slice(-selectedPeriodConfig.months)
@@ -203,73 +254,103 @@ export default function ChartsPage() {
   const correlationData = profile.correlationData
   const distributionData = profile.distributionData
 
-  const totalRegistros = profile.rowCount
-  const pontosAcimaP75 = histogramData.reduce((sum, point) => sum + point.aboveThreshold, 0)
-  const mediaPrimaria = Math.round(mean(visibleTrendData.map((point) => point.primary)))
-  const mediaFaixaInferior = Math.round(mean(visibleTrendData.map((point) => point.lowShare)))
+  const primaryStats = profile.metrics?.[profile.primaryMetric] ?? null
 
-  const secondaryValues = visibleTrendData
-    .map((point) => point.secondary)
-    .filter((value): value is number => value !== null)
-  const mediaSecundaria = secondaryValues.length ? Math.round(mean(secondaryValues)) : null
-
-  const firstTrendPoint = visibleTrendData[0]
-  const lastTrendPoint = visibleTrendData[visibleTrendData.length - 1]
-  const variacaoP75 =
-    firstTrendPoint && firstTrendPoint.highCount > 0
-      ? ((lastTrendPoint.highCount - firstTrendPoint.highCount) / firstTrendPoint.highCount) * 100
-      : 0
-
-  const contextHint = showTemporalControls ? 'na janela exibida' : 'nos grupos exibidos'
-
-  const statCards: StatCard[] = [
-    {
-      key: 'total',
-      label: 'Registros analisados',
-      value: formatInteger(totalRegistros),
-      hint: `${formatInteger(profile.columnCount)} colunas identificadas`,
-      tone: chartPalette.info,
-      icon: Activity,
-      hintTone: 'neutral',
-    },
-    {
-      key: 'primary',
-      label: `${profile.primaryMetric} medio`,
-      value: formatInteger(mediaPrimaria),
-      hint: `media ${contextHint}`,
-      tone: chartPalette.primary,
-      icon: Gauge,
-      hintTone: 'neutral',
-    },
-    mediaSecundaria !== null
-      ? {
-          key: 'secondary',
-          label: `${profile.secondaryMetric ?? 'Metrica secundaria'} media`,
-          value: formatInteger(mediaSecundaria),
-          hint: 'comparativo entre metricas numericas',
+  const statCards: StatCard[] = primaryStats
+    ? [
+        {
+          key: 'total',
+          label: `${primaryMetricLabel} total`,
+          value: formatMetricValue(primaryStats.total),
+          hint: 'soma dos valores',
+          tone: chartPalette.info,
+          icon: Activity,
+          hintTone: 'neutral',
+        },
+        {
+          key: 'media',
+          label: `${primaryMetricLabel} media`,
+          value: formatMetricValue(primaryStats.media),
+          hint: 'media simples',
+          tone: chartPalette.primary,
+          icon: Gauge,
+          hintTone: 'neutral',
+        },
+        {
+          key: 'media-movel',
+          label: `${primaryMetricLabel} media movel`,
+          value: formatMetricValue(primaryStats.media_movel),
+          hint: 'janela de 7 registros',
           tone: chartPalette.success,
           icon: TrendingUp,
           hintTone: 'neutral',
-        }
-      : {
-          key: 'lower-band',
-          label: 'Faixa inferior (<= mediana)',
-          value: formatPercent(mediaFaixaInferior),
-          hint: `sobre ${profile.primaryMetric}`,
+        },
+        {
+          key: 'mediana',
+          label: `${primaryMetricLabel} mediana`,
+          value: formatMetricValue(primaryStats.mediana),
+          hint: '50o percentil',
+          tone: chartPalette.primaryLight,
+          icon: BarChart3,
+          hintTone: 'neutral',
+        },
+        {
+          key: 'minimo',
+          label: `${primaryMetricLabel} minimo`,
+          value: formatMetricValue(primaryStats.minimo),
+          hint: 'menor valor',
           tone: chartPalette.success,
           icon: TrendingUp,
-          hintTone: mediaFaixaInferior >= 50 ? 'up' : 'down',
+          hintTone: 'down',
         },
-    {
-      key: 'above-p75',
-      label: 'Registros acima de P75',
-      value: formatInteger(pontosAcimaP75),
-      hint: `${variacaoP75 >= 0 ? '+' : ''}${DECIMAL_FORMATTER.format(variacaoP75)}% ${contextHint}`,
-      tone: chartPalette.warning,
-      icon: BarChart3,
-      hintTone: variacaoP75 <= 0 ? 'up' : 'down',
-    },
-  ]
+        {
+          key: 'maximo',
+          label: `${primaryMetricLabel} maximo`,
+          value: formatMetricValue(primaryStats.maximo),
+          hint: 'maior valor',
+          tone: chartPalette.warning,
+          icon: TrendingUp,
+          hintTone: 'up',
+        },
+        {
+          key: 'desvio',
+          label: `${primaryMetricLabel} desvio padrao`,
+          value: formatMetricValue(primaryStats.desvio_padrao),
+          hint: 'dispersao dos dados',
+          tone: chartPalette.info,
+          icon: Gauge,
+          hintTone: 'neutral',
+        },
+        {
+          key: 'percentis',
+          label: `${primaryMetricLabel} percentis`,
+          value: `${formatMetricValue(primaryStats.p25)} / ${formatMetricValue(primaryStats.p75)}`,
+          hint: 'P25 / P75',
+          tone: chartPalette.primary,
+          icon: ScatterChartIcon,
+          hintTone: 'neutral',
+        },
+        {
+          key: 'variacao',
+          label: `${primaryMetricLabel} variacao`,
+          value: formatPercent(primaryStats.variacao_percentual),
+          hint: 'variacao percentual',
+          tone: chartPalette.warning,
+          icon: TrendingUp,
+          hintTone: primaryStats.variacao_percentual >= 0 ? 'up' : 'down',
+        },
+      ]
+    : [
+        {
+          key: 'total',
+          label: 'Registros analisados',
+          value: formatInteger(profile.rowCount),
+          hint: `${formatInteger(profile.columnCount)} colunas identificadas`,
+          tone: chartPalette.info,
+          icon: Activity,
+          hintTone: 'neutral',
+        },
+      ]
 
   const tooltipContentStyle = {
     backgroundColor: chartPalette.surface,
@@ -292,21 +373,21 @@ export default function ChartsPage() {
     Boolean(profile.secondaryMetric) && visibleTrendData.some((point) => point.secondary !== null)
   const hasCorrelation = Boolean(profile.secondaryMetric) && correlationData.length > 0
 
-  const primaryLineName = `${profile.primaryMetric} (media)`
-  const secondaryLineName = profile.secondaryMetric
-    ? `${profile.secondaryMetric} (media)`
+  const primaryLineName = `${primaryMetricLabel} (media)`
+  const secondaryLineName = secondaryMetricLabel
+    ? `${secondaryMetricLabel} (media)`
     : 'Metrica secundaria'
   const highCountLineName = 'Acima de P75'
 
   const trendTitle = profile.hasTimeDimension
     ? 'Evolucao temporal das metricas'
-    : `Comparativo por ${profile.groupingDimension}`
+    : `Comparativo por ${groupingDimensionLabel}`
 
   const trendDescription = profile.hasTimeDimension
-    ? `Tendencia de ${profile.primaryMetric}${
-        profile.secondaryMetric ? `, ${profile.secondaryMetric}` : ''
+    ? `Tendencia de ${primaryMetricLabel}${
+        secondaryMetricLabel ? `, ${secondaryMetricLabel}` : ''
       } e registros acima do 75o percentil.`
-    : `Medias por ${profile.groupingDimension} com destaque para registros acima do 75o percentil.`
+    : `Medias por ${groupingDimensionLabel} com destaque para registros acima do 75o percentil.`
 
   return (
     <div className={styles.page}>
@@ -376,7 +457,7 @@ export default function ChartsPage() {
               ))}
             </div>
           ) : (
-            <span className={styles.controlLabel}>{profile.groupingDimension}</span>
+            <span className={styles.controlLabel}>{groupingDimensionLabel}</span>
           )}
         </div>
       </section>
@@ -566,7 +647,7 @@ export default function ChartsPage() {
             <div className={styles.chartTitleWrap}>
               <h2 className={styles.chartTitle}>
                 <BarChart3 size={18} className={styles.chartIcon} />
-                Distribuicao de {profile.primaryMetric}
+                Distribuicao de {primaryMetricLabel}
               </h2>
               <p className={styles.chartDescription}>
                 Histograma automatico da metrica principal com destaque para valores acima de P75.
@@ -616,8 +697,9 @@ export default function ChartsPage() {
                   Correlacao principal
                 </h2>
                 <p className={styles.chartDescription}>
-                  Relacao entre {profile.primaryMetric} e {profile.secondaryMetric}, com tamanho da
-                  bolha baseado em {profile.tertiaryMetric ?? profile.primaryMetric}.
+                  Relacao entre {primaryMetricLabel} e{' '}
+                  {secondaryMetricLabel ?? 'metrica secundaria'}, com tamanho da bolha baseado em{' '}
+                  {tertiaryMetricLabel ?? primaryMetricLabel}.
                 </p>
               </div>
               <span className={styles.chartBadge}>Scatter</span>
@@ -629,7 +711,7 @@ export default function ChartsPage() {
                   <XAxis
                     type="number"
                     dataKey="x"
-                    name={profile.primaryMetric}
+                    name={primaryMetricLabel}
                     stroke={chartPalette.muted}
                     tickLine={false}
                     axisLine={false}
@@ -637,7 +719,7 @@ export default function ChartsPage() {
                   <YAxis
                     type="number"
                     dataKey="y"
-                    name={profile.secondaryMetric ?? 'Metrica secundaria'}
+                    name={secondaryMetricLabel ?? 'Metrica secundaria'}
                     stroke={chartPalette.muted}
                     tickLine={false}
                     axisLine={false}
@@ -647,7 +729,7 @@ export default function ChartsPage() {
                     type="number"
                     dataKey="size"
                     range={[90, 280]}
-                    name={profile.tertiaryMetric ?? profile.primaryMetric}
+                    name={tertiaryMetricLabel ?? primaryMetricLabel}
                   />
                   <Tooltip
                     cursor={{ strokeDasharray: '4 4' }}

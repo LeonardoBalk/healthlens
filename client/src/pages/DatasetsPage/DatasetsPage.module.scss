@@ -100,3 +100,23 @@
     color: var(--color-primary, $color-primary);
   }
 }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.deleteButton {
+  border-color: color-mix(
+    in srgb,
+    var(--color-danger, #ff453a) 50%,
+    var(--color-border, $color-border)
+  );
+  color: var(--color-danger, #ff453a);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-danger, #ff453a) 12%, transparent);
+    border-color: var(--color-danger, #ff453a);
+  }
+}

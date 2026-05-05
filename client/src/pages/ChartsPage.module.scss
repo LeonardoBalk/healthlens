@@ -6,6 +6,7 @@
   display: flex;
   flex-direction: column;
   gap: $space-6;
+  overflow-x: hidden;
 }
 
 .header {
@@ -21,6 +22,7 @@
   flex-direction: column;
   gap: $space-2;
   max-width: 66ch;
+  min-width: 0;
 }
 
 .title {
@@ -63,8 +65,8 @@
   display: flex;
   flex-direction: column;
   gap: $space-2;
-  min-width: 18rem;
-  flex: 1;
+  min-width: 0;
+  flex: 1 1 16rem;
 }
 
 .controlLabel,
@@ -114,6 +116,7 @@
   display: flex;
   align-items: center;
   gap: $space-3;
+  min-width: 0;
 }
 
 .kpiIcon {
@@ -173,6 +176,13 @@
   color: var(--color-text-primary, $color-text-primary);
   font-size: $font-size-lg;
   font-weight: $font-weight-semibold;
+  overflow-wrap: break-word;
+  word-break: break-word;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
 }
 
 .cardDescription {
@@ -289,6 +299,33 @@
   line-height: 1.6;
 }
 
+.infoBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  border-radius: $radius-xl;
+  border: 1px solid color-mix(in srgb, var(--color-info, #0a84ff) 25%, transparent);
+  background: color-mix(in srgb, var(--color-info, #0a84ff) 6%, transparent);
+}
+
+.infoBannerIcon {
+  color: var(--color-info, #0a84ff);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.infoBannerText {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-sm;
+  line-height: 1.5;
+
+  strong {
+    color: var(--color-text-primary, $color-text-primary);
+    font-weight: $font-weight-semibold;
+  }
+}
+
 .emptyState {
   padding: $space-8;
   display: flex;
@@ -313,6 +350,10 @@
 }
 
 @media (max-width: 48rem) {
+  .page {
+    gap: $space-4;
+  }
+
   .headerActions {
     width: 100%;
   }
@@ -324,11 +365,15 @@
   }
 
   .controlGroup {
-    min-width: 100%;
+    flex-basis: 100%;
   }
 
   .controlBar {
     padding: $space-4;
+  }
+
+  .chartTitle {
+    font-size: $font-size-base;
   }
 }
 

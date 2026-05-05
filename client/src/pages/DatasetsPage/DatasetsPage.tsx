@@ -184,6 +184,33 @@ export default function DatasetsPage() {
                   )}
                 </div>
               </div>
+
+              <div className={styles.exportActions}>
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  title="Exportar como CSV"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    exportDatasetAsCsv(dataset)
+                  }}
+                >
+                  <Download size={15} />
+                  <span>CSV</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  title="Exportar como JSON"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    exportDatasetAsJson(dataset)
+                  }}
+                >
+                  <FileJson size={15} />
+                  <span>JSON</span>
+                </button>
+              </div>
             </div>
           )
         })}

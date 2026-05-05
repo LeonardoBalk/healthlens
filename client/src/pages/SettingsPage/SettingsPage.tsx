@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Bell, Globe, Monitor, Palette, Shield, Trash2 } from 'lucide-react'
+import { Bell, Database, Monitor, Palette, Save, Shield, Trash2 } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useSettings, type ChartColorPreset } from '@/contexts/SettingsContext'
 import styles from './SettingsPage.module.scss'
 
 type ToastState = {
@@ -8,41 +9,17 @@ type ToastState = {
   type: 'success' | 'error'
 }
 
-const STORAGE_KEY = 'healthlens-settings'
-
-type AppSettings = {
-  language: string
-  notifications: boolean
-  compactMode: boolean
-  animationsEnabled: boolean
-  autoSaveInterval: string
-}
-
-const defaultSettings: AppSettings = {
-  language: 'pt-BR',
-  notifications: true,
-  compactMode: false,
-  animationsEnabled: true,
-  autoSaveInterval: '5',
-}
-
-const loadSettings = (): AppSettings => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return defaultSettings
-    return { ...defaultSettings, ...(JSON.parse(saved) as Partial<AppSettings>) }
-  } catch {
-    return defaultSettings
-  }
-}
-
-const saveSettings = (settings: AppSettings) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-}
+const COLOR_PRESETS: { value: ChartColorPreset; label: string; hex: string }[] = [
+  { value: 'rose', label: 'Rosa', hex: '#ff2d55' },
+  { value: 'blue', label: 'Azul', hex: '#0a84ff' },
+  { value: 'emerald', label: 'Verde', hex: '#30d158' },
+  { value: 'amber', label: 'Âmbar', hex: '#ff9f0a' },
+  { value: 'violet', label: 'Violeta', hex: '#af52de' },
+]
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
-  const [settings, setSettings] = useState<AppSettings>(loadSettings)
+  const { settings, updateSetting, resetSettings } = useSettings()
   const [toast, setToast] = useState<ToastState | null>(null)
 
   useEffect(() => {
@@ -51,17 +28,25 @@ export default function SettingsPage() {
     return () => window.clearTimeout(timer)
   }, [toast])
 
-  const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
-    setSettings((prev) => {
-      const next = { ...prev, [key]: value }
-      saveSettings(next)
-      return next
-    })
+  const handleToggle = <K extends 'notifications' | 'animationsEnabled' | 'confirmBeforeDelete'>(
+    key: K
+  ) => {
+    updateSetting(key, !settings[key])
+    setToast({ message: 'Configuração salva.', type: 'success' })
+  }
+
+  const handleSelect = <
+    K extends 'autoSaveInterval' | 'previewRowLimit' | 'chartColorPreset' | 'recentDatasetsCount',
+  >(
+    key: K,
+    value: string
+  ) => {
+    updateSetting(key, value as (typeof settings)[K])
     setToast({ message: 'Configuração salva.', type: 'success' })
   }
 
   const handleClearLocalData = () => {
-    const keysToKeep = ['healthlens-theme']
+    const keysToKeep = ['healthlens-theme', 'healthlens-settings']
     const keys: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
@@ -70,8 +55,12 @@ export default function SettingsPage() {
       }
     }
     keys.forEach((key) => localStorage.removeItem(key))
-    setSettings(defaultSettings)
     setToast({ message: 'Dados locais removidos.', type: 'success' })
+  }
+
+  const handleResetSettings = () => {
+    resetSettings()
+    setToast({ message: 'Configurações restauradas ao padrão.', type: 'success' })
   }
 
   return (
@@ -91,7 +80,7 @@ export default function SettingsPage() {
           </span>
           <div className={styles.sectionTitleWrap}>
             <h2 className={styles.sectionTitle}>Aparência</h2>
-            <p className={styles.sectionDescription}>Tema, animações e layout da interface.</p>
+            <p className={styles.sectionDescription}>Tema, animações e cores dos gráficos.</p>
           </div>
         </div>
 
@@ -116,13 +105,14 @@ export default function SettingsPage() {
           <div className={styles.settingInfo}>
             <span className={styles.settingLabel}>Animações</span>
             <span className={styles.settingHint}>
-              Desative para reduzir movimento na interface.
+              Desative para reduzir movimento na interface. Todas as transições e animações serão
+              removidas.
             </span>
           </div>
           <button
             type="button"
             className={`${styles.toggle} ${settings.animationsEnabled ? styles.toggleActive : ''}`}
-            onClick={() => updateSetting('animationsEnabled', !settings.animationsEnabled)}
+            onClick={() => handleToggle('animationsEnabled')}
             role="switch"
             aria-checked={settings.animationsEnabled}
             aria-label="Alternar animações"
@@ -131,61 +121,121 @@ export default function SettingsPage() {
 
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}>
-            <span className={styles.settingLabel}>Modo compacto</span>
+            <span className={styles.settingLabel}>Cor de destaque dos gráficos</span>
             <span className={styles.settingHint}>
-              Reduz espaçamentos para mostrar mais conteúdo.
+              Define a cor primária usada nas barras, linhas e destaques dos gráficos.
             </span>
           </div>
-          <button
-            type="button"
-            className={`${styles.toggle} ${settings.compactMode ? styles.toggleActive : ''}`}
-            onClick={() => updateSetting('compactMode', !settings.compactMode)}
-            role="switch"
-            aria-checked={settings.compactMode}
-            aria-label="Alternar modo compacto"
-          />
+          <div className={styles.colorPresets}>
+            {COLOR_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                className={`${styles.colorSwatch} ${settings.chartColorPreset === preset.value ? styles.colorSwatchActive : ''}`}
+                style={{ '--swatch-color': preset.hex } as React.CSSProperties}
+                onClick={() => handleSelect('chartColorPreset', preset.value)}
+                title={preset.label}
+                aria-label={`Cor ${preset.label}`}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Geral */}
+      {/* Datasets */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <span className={styles.sectionIcon}>
-            <Globe size={20} />
+            <Database size={20} />
           </span>
           <div className={styles.sectionTitleWrap}>
-            <h2 className={styles.sectionTitle}>Geral</h2>
-            <p className={styles.sectionDescription}>Idioma e salvamento automático.</p>
+            <h2 className={styles.sectionTitle}>Datasets</h2>
+            <p className={styles.sectionDescription}>
+              Limites de preview, painel e exclusão de dados.
+            </p>
           </div>
         </div>
 
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}>
-            <span className={styles.settingLabel}>Idioma</span>
-            <span className={styles.settingHint}>Define o idioma da interface.</span>
+            <span className={styles.settingLabel}>Limite de linhas para preview</span>
+            <span className={styles.settingHint}>
+              Número máximo de linhas carregadas ao pré-visualizar um dataset. Valores altos podem
+              deixar o navegador mais lento.
+            </span>
           </div>
           <select
             className={styles.select}
-            value={settings.language}
-            onChange={(e) => updateSetting('language', e.target.value)}
+            value={settings.previewRowLimit}
+            onChange={(e) => handleSelect('previewRowLimit', e.target.value)}
           >
-            <option value="pt-BR">Português (BR)</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
+            <option value="1000">1.000 linhas</option>
+            <option value="2500">2.500 linhas</option>
+            <option value="5000">5.000 linhas</option>
+            <option value="10000">10.000 linhas</option>
           </select>
+        </div>
+
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}>
+            <span className={styles.settingLabel}>Datasets recentes no painel</span>
+            <span className={styles.settingHint}>
+              Quantidade de datasets exibidos na tela inicial do Painel Epidemiológico.
+            </span>
+          </div>
+          <select
+            className={styles.select}
+            value={settings.recentDatasetsCount}
+            onChange={(e) => handleSelect('recentDatasetsCount', e.target.value)}
+          >
+            <option value="3">3 datasets</option>
+            <option value="5">5 datasets</option>
+            <option value="10">10 datasets</option>
+            <option value="all">Todos</option>
+          </select>
+        </div>
+
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}>
+            <span className={styles.settingLabel}>Confirmar antes de excluir</span>
+            <span className={styles.settingHint}>
+              Exibe um diálogo de confirmação antes de excluir permanentemente um dataset.
+            </span>
+          </div>
+          <button
+            type="button"
+            className={`${styles.toggle} ${settings.confirmBeforeDelete ? styles.toggleActive : ''}`}
+            onClick={() => handleToggle('confirmBeforeDelete')}
+            role="switch"
+            aria-checked={settings.confirmBeforeDelete}
+            aria-label="Alternar confirmação de exclusão"
+          />
+        </div>
+      </section>
+
+      {/* Salvamento */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionIcon}>
+            <Save size={20} />
+          </span>
+          <div className={styles.sectionTitleWrap}>
+            <h2 className={styles.sectionTitle}>Salvamento</h2>
+            <p className={styles.sectionDescription}>Controle o salvamento automático de dados.</p>
+          </div>
         </div>
 
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}>
             <span className={styles.settingLabel}>Intervalo de auto-save</span>
             <span className={styles.settingHint}>
-              Frequência em que os dados são salvos localmente.
+              Frequência em que os dados de sessão são salvos localmente no navegador.
             </span>
           </div>
           <select
             className={styles.select}
             value={settings.autoSaveInterval}
-            onChange={(e) => updateSetting('autoSaveInterval', e.target.value)}
+            onChange={(e) => handleSelect('autoSaveInterval', e.target.value)}
           >
             <option value="1">A cada 1 min</option>
             <option value="5">A cada 5 min</option>
@@ -217,7 +267,7 @@ export default function SettingsPage() {
           <button
             type="button"
             className={`${styles.toggle} ${settings.notifications ? styles.toggleActive : ''}`}
-            onClick={() => updateSetting('notifications', !settings.notifications)}
+            onClick={() => handleToggle('notifications')}
             role="switch"
             aria-checked={settings.notifications}
             aria-label="Alternar notificações"
@@ -267,13 +317,26 @@ export default function SettingsPage() {
           <div className={styles.settingInfo}>
             <span className={styles.settingLabel}>Limpar dados locais</span>
             <span className={styles.settingHint}>
-              Remove todos os datasets em cache e configurações (exceto tema). Esta ação não pode
+              Remove todos os datasets em cache (exceto tema e configurações). Esta ação não pode
               ser desfeita.
             </span>
           </div>
           <button type="button" className={styles.dangerButton} onClick={handleClearLocalData}>
             <Trash2 size={15} />
             <span>Limpar</span>
+          </button>
+        </div>
+
+        <div className={styles.settingRow}>
+          <div className={styles.settingInfo}>
+            <span className={styles.settingLabel}>Restaurar padrões</span>
+            <span className={styles.settingHint}>
+              Redefine todas as configurações desta página para os valores originais.
+            </span>
+          </div>
+          <button type="button" className={styles.dangerButton} onClick={handleResetSettings}>
+            <Trash2 size={15} />
+            <span>Restaurar</span>
           </button>
         </div>
       </section>

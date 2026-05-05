@@ -9,6 +9,7 @@ import {
   setActiveChartDatasetId,
   type ChartDatasetRecord,
 } from '@/utils/chartDatasets'
+import { useSettings } from '@/contexts/SettingsContext'
 import styles from './DatasetsPage.module.scss'
 
 const formatDate = (isoDate: string) => {
@@ -19,6 +20,7 @@ const formatDate = (isoDate: string) => {
 
 export default function DatasetsPage() {
   const navigate = useNavigate()
+  const { settings } = useSettings()
   const [datasets, setDatasets] = useState<ChartDatasetRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeDatasetId, setActiveDatasetId] = useState<string | null>(null)
@@ -77,10 +79,12 @@ export default function DatasetsPage() {
     const target = datasets.find((dataset) => dataset.id === datasetId)
     if (!target || target.source === 'seed') return
 
-    const confirmed = window.confirm(
-      `Excluir o dataset "${target.name}"? Essa ação não pode ser desfeita.`
-    )
-    if (!confirmed) return
+    if (settings.confirmBeforeDelete) {
+      const confirmed = window.confirm(
+        `Excluir o dataset "${target.name}"? Essa ação não pode ser desfeita.`
+      )
+      if (!confirmed) return
+    }
 
     setDeletingId(datasetId)
     const deleted = await deleteChartDataset(datasetId)

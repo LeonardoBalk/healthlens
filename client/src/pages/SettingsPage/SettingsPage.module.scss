@@ -170,6 +170,39 @@
   }
 }
 
+// Color preset picker
+.colorPresets {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  flex-shrink: 0;
+}
+
+.colorSwatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: $radius-full;
+  border: 2px solid transparent;
+  background: var(--swatch-color);
+  cursor: pointer;
+  transition:
+    transform $transition-fast,
+    border-color $transition-fast,
+    box-shadow $transition-fast;
+  padding: 0;
+
+  &:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--swatch-color) 25%, transparent);
+  }
+
+  &Active {
+    border-color: var(--color-text-primary, $color-text-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--swatch-color) 35%, transparent);
+    transform: scale(1.1);
+  }
+}
+
 // Danger zone
 .dangerSection {
   border-color: color-mix(

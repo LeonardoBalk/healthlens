@@ -91,14 +91,28 @@ type CategoricalCandidate = {
 
 const ACTIVE_DATASET_KEY = 'healthlens-active-dataset-id'
 const PROFILE_VERSION = 2
-const MAX_ROWS_TO_PROFILE = 5000
 const MAX_SCATTER_POINTS = 240
 const MAX_TREND_GROUPS = 12
 const MAX_CATEGORY_VALUES = 40
 const MAX_SEGMENT_BARS = 10
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:3003'
-const MAX_PREVIEW_ROWS = 5000
+
+const getPreviewRowLimit = (): number => {
+  try {
+    const saved = localStorage.getItem('healthlens-settings')
+    if (saved) {
+      const parsed = JSON.parse(saved) as Record<string, unknown>
+      if (parsed && typeof parsed.previewRowLimit === 'string') {
+        const limit = Number(parsed.previewRowLimit)
+        if (Number.isFinite(limit) && limit > 0) return limit
+      }
+    }
+  } catch {
+    // Ignore error
+  }
+  return 5000
+}
 
 const safeRound = (value: number, decimals = 0) => {
   if (!Number.isFinite(value)) return 0
@@ -1240,7 +1254,7 @@ const fetchDbcRowsFromServer = async (file: File): Promise<RowRecord[]> => {
     const payload = (await response.json().catch(() => null)) as { rows?: RowRecord[] } | null
 
     if (!response.ok || !payload?.rows) return []
-    return payload.rows.slice(0, MAX_PREVIEW_ROWS)
+    return payload.rows.slice(0, getPreviewRowLimit())
   } catch {
     return []
   }
@@ -1269,7 +1283,7 @@ const buildEmptyProfile = (): ChartDatasetProfile => ({
 })
 
 const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
-  const rows = rowsInput.slice(0, MAX_ROWS_TO_PROFILE)
+  const rows = rowsInput.slice(0, getPreviewRowLimit())
   const columns = Array.from(
     rows.reduce((set, row) => {
       Object.keys(row).forEach((key) => set.add(key))

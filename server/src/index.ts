@@ -14,7 +14,7 @@ const app = express()
 const PORT = process.env.PORT ?? 3003
 const MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024
 const ALLOWED_EXTENSIONS = new Set(['.csv', '.json', '.xlsx', '.dbc'])
-const MAX_PREVIEW_ROWS = 5000
+const MAX_PREVIEW_ROWS = 10000
 
 type RowRecord = Record<string, unknown>
 type AuthenticatedRequest = Request & { user?: User }
@@ -53,6 +53,7 @@ const parseDbcBuffer = async (buffer: Buffer): Promise<RowRecord[]> => {
     const bytes = new Uint8Array(buffer)
     const records: RowRecord[] = []
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     for await (const record of readDbcRecords(bytes)) {
       if (record && typeof record === 'object') {
         records.push(record as RowRecord)

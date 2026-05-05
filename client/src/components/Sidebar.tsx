@@ -19,11 +19,11 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { supabase } from '@/lib/supabase'
 
 const navItems = [
-  { key: 'overview', path: '/', label: 'Overview', icon: LayoutDashboard },
+  { key: 'overview', path: '/', label: 'Painel Epidemiológico', icon: LayoutDashboard },
   { key: 'datasets', path: '/list', label: 'Meus Datasets', icon: Database },
-  { key: 'series', path: '/series', label: 'Series Temporais', icon: Activity },
-  { key: 'charts', path: '/charts', label: 'Graficos', icon: BarChart3 },
-  { key: 'reports', path: '/reports', label: 'Relatorios', icon: FileText },
+  { key: 'series', path: '/series', label: 'Séries Temporais', icon: Activity },
+  { key: 'charts', path: '/charts', label: 'Gráficos', icon: BarChart3 },
+  { key: 'reports', path: '/reports', label: 'Relatórios Epidemiol.', icon: FileText },
 ]
 
 interface SidebarProps {

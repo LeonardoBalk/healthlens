@@ -1,190 +1,263 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { LucideIcon } from 'lucide-react'
 import {
   Activity,
+  BadgePercent,
   BarChart3,
   CalendarRange,
   Download,
-  Filter,
-  Gauge,
-  ScatterChart as ScatterChartIcon,
-  TrendingUp,
-  Upload,
+  RefreshCcw,
+  Sigma,
+  Skull,
+  Users,
 } from 'lucide-react'
 import {
   Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
   ComposedChart,
-  Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
-  Scatter,
-  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
-  ZAxis,
 } from 'recharts'
 import { Button } from '@/components/ui/Button/Button'
-import { useTheme } from '@/contexts/ThemeContext'
 import {
-  exportDatasetAsCsv,
+  fetchChartDatasets,
   getActiveChartDatasetId,
-  getAllChartDatasets,
   setActiveChartDatasetId,
+  type ChartDatasetProfile,
+  type ChartDatasetRecord,
 } from '@/utils/chartDatasets'
 import styles from './ChartsPage.module.scss'
 
-type PeriodId = '3m' | '6m' | '12m'
+type MetricKey = 'nu_idade_n' | 'atraso_notific' | 'tempo_encerra'
 
-type PeriodOption = {
-  id: PeriodId
+type MetricPanel = {
+  key: MetricKey
   label: string
-  months: number
-}
-
-type StatCard = {
-  key: string
-  label: string
-  value: string
   hint: string
-  tone: string
-  icon: LucideIcon
-  hintTone: 'up' | 'down' | 'neutral'
 }
 
-type ChartPalette = {
-  surface: string
-  border: string
-  grid: string
-  text: string
-  muted: string
-  primary: string
-  primaryLight: string
-  success: string
-  warning: string
-  danger: string
-  info: string
+type TrendRow = {
+  label: string
+  cases: number
+  movingAverage: number
 }
 
-const PERIOD_OPTIONS: PeriodOption[] = [
-  { id: '3m', label: '3M', months: 3 },
-  { id: '6m', label: '6M', months: 6 },
-  { id: '12m', label: '12M', months: 12 },
+type CategoryRow = {
+  segment: string
+  count: number
+  ratio: number
+}
+
+type NumericStats = {
+  total: number
+  media: number
+  media_movel: number
+  mediana: number
+  minimo: number
+  maximo: number
+  desvio_padrao: number
+  p25: number
+  p75: number
+  variacao_percentual: number
+  valores: number[]
+}
+
+const METRIC_PANELS: MetricPanel[] = [
+  { key: 'nu_idade_n', label: 'Idade', hint: 'idade do paciente' },
+  { key: 'atraso_notific', label: 'Atraso notificação', hint: 'dias até notificar' },
+  { key: 'tempo_encerra', label: 'Tempo encerramento', hint: 'dias até encerrar' },
 ]
 
 const INTEGER_FORMATTER = new Intl.NumberFormat('pt-BR')
 const DECIMAL_FORMATTER = new Intl.NumberFormat('pt-BR', {
-  maximumFractionDigits: 1,
   minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
 })
 
 const formatInteger = (value: number) => INTEGER_FORMATTER.format(Math.round(value))
-const formatPercent = (value: number) => `${DECIMAL_FORMATTER.format(value)}%`
+const formatDecimal = (value: number) => DECIMAL_FORMATTER.format(value)
+const formatPercent = (value: number) => `${formatDecimal(value)}%`
 
-const mean = (values: number[]) => {
+const safeAverage = (values: number[]) => {
   if (!values.length) return 0
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-const getRiskColor = (risk: string, palette: ChartPalette) => {
-  if (risk === 'Alto') return palette.danger
-  if (risk === 'Moderado') return palette.warning
-  return palette.success
+const variationPercent = (values: number[]) => {
+  if (values.length < 2) return 0
+  const first = values[0]
+  const last = values[values.length - 1]
+
+  if (first === 0) return last === 0 ? 0 : 100
+
+  return ((last - first) / Math.abs(first)) * 100
 }
 
-const getRiskBarColor = (value: number, palette: ChartPalette) => {
-  if (value >= 27) return palette.danger
-  if (value >= 20) return palette.warning
-  return palette.success
+const getFallbackStats = (): NumericStats => ({
+  total: 0,
+  media: 0,
+  media_movel: 0,
+  mediana: 0,
+  minimo: 0,
+  maximo: 0,
+  desvio_padrao: 0,
+  p25: 0,
+  p75: 0,
+  variacao_percentual: 0,
+  valores: [],
+})
+
+const getNumericStats = (profile: ChartDatasetProfile, key: MetricKey): NumericStats => {
+  const stats = profile.metrics[key]
+  return stats ?? getFallbackStats()
+}
+
+const getTrendRows = (profile: ChartDatasetProfile): TrendRow[] => {
+  const cases = profile.trendData.map((entry) => entry.sampleSize)
+  const averages = cases.map((_, index) =>
+    safeAverage(cases.slice(Math.max(0, index - 2), index + 1))
+  )
+
+  return profile.trendData.map((entry, index) => ({
+    label: entry.group,
+    cases: entry.sampleSize,
+    movingAverage: averages[index] ?? entry.sampleSize,
+  }))
+}
+
+const getCategoryRows = (profile: ChartDatasetProfile): CategoryRow[] =>
+  profile.segmentData.map((entry) => ({
+    segment: entry.segment,
+    ratio: entry.ratio,
+    count: entry.count,
+  }))
+
+const getKpis = (profile: ChartDatasetProfile) => {
+  const cases = profile.rowCount
+  const deaths = profile.metrics.obito?.total ?? 0
+  const lethality = cases > 0 ? (deaths / cases) * 100 : 0
+
+  return { cases, deaths, lethality }
 }
 
 export default function ChartsPage() {
   const navigate = useNavigate()
-  const { theme } = useTheme()
+  const [datasets, setDatasets] = useState<ChartDatasetRecord[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDatasetId, setSelectedDatasetId] = useState('')
 
-  const datasets = useMemo(() => getAllChartDatasets(), [])
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string>(() => {
-    const active = getActiveChartDatasetId()
-    if (active && datasets.some((dataset) => dataset.id === active)) return active
-    return datasets[0]?.id ?? ''
-  })
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodId>('12m')
+  useEffect(() => {
+    let cancelled = false
+
+    const loadDatasets = async () => {
+      setIsLoading(true)
+      const loadedDatasets = await fetchChartDatasets()
+
+      if (cancelled) return
+
+      setDatasets(loadedDatasets)
+
+      const activeId = getActiveChartDatasetId()
+      const nextSelectedId =
+        activeId && loadedDatasets.some((dataset) => dataset.id === activeId)
+          ? activeId
+          : (loadedDatasets[0]?.id ?? '')
+
+      setSelectedDatasetId(nextSelectedId)
+      if (nextSelectedId) {
+        setActiveChartDatasetId(nextSelectedId)
+      }
+      setIsLoading(false)
+    }
+
+    void loadDatasets()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const selectedDataset = useMemo(
     () => datasets.find((dataset) => dataset.id === selectedDatasetId) ?? null,
     [datasets, selectedDatasetId]
   )
 
-  const selectedPeriodConfig =
-    PERIOD_OPTIONS.find((period) => period.id === selectedPeriod) ?? PERIOD_OPTIONS[1]
+  const profile = selectedDataset?.profile ?? null
 
-  const chartPalette = useMemo<ChartPalette>(() => {
-    const isDarkTheme = theme === 'dark'
+  const trendRows = useMemo(() => (profile ? getTrendRows(profile) : []), [profile])
+  const categoryRows = useMemo(() => (profile ? getCategoryRows(profile) : []), [profile])
+  const kpis = useMemo(() => (profile ? getKpis(profile) : null), [profile])
+  const numericPanels = useMemo(() => {
+    if (!profile) return []
 
-    if (typeof window === 'undefined') {
-      return {
-        surface: isDarkTheme ? '#18181b' : '#fafafa',
-        border: isDarkTheme ? '#27272a' : '#e5e5e5',
-        grid: isDarkTheme ? '#3f3f46' : '#d4d4d8',
-        text: isDarkTheme ? '#fafafa' : '#171717',
-        muted: isDarkTheme ? '#a1a1aa' : '#525252',
-        primary: '#ff2d55',
-        primaryLight: '#ff6482',
-        success: '#30d158',
-        warning: '#ff9f0a',
-        danger: '#ff453a',
-        info: '#0a84ff',
-      }
+    return METRIC_PANELS.map((panel) => ({
+      ...panel,
+      stats: getNumericStats(profile, panel.key),
+    }))
+  }, [profile])
+
+  const trendCases = trendRows.map((row) => row.cases)
+  const trendVariation = variationPercent(trendCases)
+
+  const summaryText = useMemo(() => {
+    if (!profile || !kpis) return 'Sem dados suficientes para resumir este dataset.'
+
+    const topCategory = categoryRows[0]
+    const topMetric = numericPanels[0]?.stats
+
+    const pieces = [
+      `${formatInteger(kpis.cases)} casos`,
+      `${formatInteger(kpis.deaths)} óbitos`,
+      `letalidade de ${formatPercent(kpis.lethality)}`,
+    ]
+
+    if (topCategory) {
+      pieces.push(`${topCategory.segment} concentra ${formatPercent(topCategory.ratio)}`)
     }
 
-    const rootStyles = getComputedStyle(document.body)
-    const readToken = (token: string, fallback: string) =>
-      rootStyles.getPropertyValue(token).trim() || fallback
-
-    return {
-      surface: readToken('--color-surface', '#18181b'),
-      border: readToken('--color-border', '#27272a'),
-      grid: readToken('--color-border-strong', '#3f3f46'),
-      text: readToken('--color-text-primary', '#fafafa'),
-      muted: readToken('--color-text-secondary', '#a1a1aa'),
-      primary: readToken('--color-primary', '#ff2d55'),
-      primaryLight: readToken('--color-primary-light', '#ff6482'),
-      success: readToken('--color-success', '#30d158'),
-      warning: readToken('--color-warning', '#ff9f0a'),
-      danger: readToken('--color-danger', '#ff453a'),
-      info: readToken('--color-info', '#0a84ff'),
+    if (topMetric) {
+      pieces.push(`média principal de ${formatDecimal(topMetric.media)}`)
     }
-  }, [theme])
 
-  if (!selectedDataset) {
+    return pieces.join(' · ')
+  }, [categoryRows, kpis, numericPanels, profile])
+
+  if (isLoading) {
     return (
       <div className={styles.page}>
         <header className={styles.header}>
           <div className={styles.titleBlock}>
-            <h1 className={`gradient-text ${styles.title}`}>Graficos</h1>
+            <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
+            <p className={styles.subtitle}>Carregando datasets...</p>
+          </div>
+        </header>
+      </div>
+    )
+  }
+
+  if (!selectedDataset || !profile || !kpis) {
+    return (
+      <div className={styles.page}>
+        <header className={styles.header}>
+          <div className={styles.titleBlock}>
+            <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
             <p className={styles.subtitle}>
-              Nenhum dataset disponivel ainda. Faca upload para gerar visualizacoes automaticas.
+              Nenhum dataset disponível. Faça upload de dados epidemiológicos para gerar a dashboard
+              de vigilância.
             </p>
           </div>
         </header>
 
         <section className={styles.emptyState}>
           <p className={styles.emptyStateText}>
-            Os graficos sao montados dinamicamente com base nas colunas presentes no arquivo.
+            A dashboard trabalha com indicadores epidemiológicos: KPIs de notificações e óbitos,
+            curvas temporais, distribuição demográfica e resumo de indicadores virais.
           </p>
-          <Button
-            type="button"
-            size="lg"
-            onClick={() => {
-              void navigate('/datasets/new')
-            }}
-          >
-            <Upload size={18} />
+          <Button type="button" size="lg" onClick={() => void navigate('/datasets/new')}>
+            <Download size={18} />
             <span>Enviar dataset</span>
           </Button>
         </section>
@@ -192,152 +265,39 @@ export default function ChartsPage() {
     )
   }
 
-  const profile = selectedDataset.profile
-  const showTemporalControls = profile.hasTimeDimension && profile.trendData.length > 1
-  const trendData = showTemporalControls
-    ? profile.trendData.slice(-selectedPeriodConfig.months)
-    : profile.trendData
-  const visibleTrendData = trendData.length ? trendData : profile.trendData
-
-  const histogramData = profile.histogramData
-  const segmentData = profile.segmentData
-  const correlationData = profile.correlationData
-  const distributionData = profile.distributionData
-
-  const totalRegistros = profile.rowCount
-  const pontosAcimaP75 = histogramData.reduce((sum, point) => sum + point.aboveThreshold, 0)
-  const mediaPrimaria = Math.round(mean(visibleTrendData.map((point) => point.primary)))
-  const mediaFaixaInferior = Math.round(mean(visibleTrendData.map((point) => point.lowShare)))
-
-  const secondaryValues = visibleTrendData
-    .map((point) => point.secondary)
-    .filter((value): value is number => value !== null)
-  const mediaSecundaria = secondaryValues.length ? Math.round(mean(secondaryValues)) : null
-
-  const firstTrendPoint = visibleTrendData[0]
-  const lastTrendPoint = visibleTrendData[visibleTrendData.length - 1]
-  const variacaoP75 =
-    firstTrendPoint && firstTrendPoint.highCount > 0
-      ? ((lastTrendPoint.highCount - firstTrendPoint.highCount) / firstTrendPoint.highCount) * 100
-      : 0
-
-  const contextHint = showTemporalControls ? 'na janela exibida' : 'nos grupos exibidos'
-
-  const statCards: StatCard[] = [
-    {
-      key: 'total',
-      label: 'Registros analisados',
-      value: formatInteger(totalRegistros),
-      hint: `${formatInteger(profile.columnCount)} colunas identificadas`,
-      tone: chartPalette.info,
-      icon: Activity,
-      hintTone: 'neutral',
-    },
-    {
-      key: 'primary',
-      label: `${profile.primaryMetric} medio`,
-      value: formatInteger(mediaPrimaria),
-      hint: `media ${contextHint}`,
-      tone: chartPalette.primary,
-      icon: Gauge,
-      hintTone: 'neutral',
-    },
-    mediaSecundaria !== null
-      ? {
-          key: 'secondary',
-          label: `${profile.secondaryMetric ?? 'Metrica secundaria'} media`,
-          value: formatInteger(mediaSecundaria),
-          hint: 'comparativo entre metricas numericas',
-          tone: chartPalette.success,
-          icon: TrendingUp,
-          hintTone: 'neutral',
-        }
-      : {
-          key: 'lower-band',
-          label: 'Faixa inferior (<= mediana)',
-          value: formatPercent(mediaFaixaInferior),
-          hint: `sobre ${profile.primaryMetric}`,
-          tone: chartPalette.success,
-          icon: TrendingUp,
-          hintTone: mediaFaixaInferior >= 50 ? 'up' : 'down',
-        },
-    {
-      key: 'above-p75',
-      label: 'Registros acima de P75',
-      value: formatInteger(pontosAcimaP75),
-      hint: `${variacaoP75 >= 0 ? '+' : ''}${DECIMAL_FORMATTER.format(variacaoP75)}% ${contextHint}`,
-      tone: chartPalette.warning,
-      icon: BarChart3,
-      hintTone: variacaoP75 <= 0 ? 'up' : 'down',
-    },
-  ]
-
-  const tooltipContentStyle = {
-    backgroundColor: chartPalette.surface,
-    border: `1px solid ${chartPalette.border}`,
-    borderRadius: 12,
-    color: chartPalette.text,
-  }
-
-  const tooltipLabelStyle = {
-    color: chartPalette.text,
-    fontWeight: 600,
-  }
-
-  const legendStyle = {
-    color: chartPalette.muted,
-    fontSize: 12,
-  }
-
-  const hasSecondarySeries =
-    Boolean(profile.secondaryMetric) && visibleTrendData.some((point) => point.secondary !== null)
-  const hasCorrelation = Boolean(profile.secondaryMetric) && correlationData.length > 0
-
-  const primaryLineName = `${profile.primaryMetric} (media)`
-  const secondaryLineName = profile.secondaryMetric
-    ? `${profile.secondaryMetric} (media)`
-    : 'Metrica secundaria'
-  const highCountLineName = 'Acima de P75'
-
-  const trendTitle = profile.hasTimeDimension
-    ? 'Evolucao temporal das metricas'
-    : `Comparativo por ${profile.groupingDimension}`
-
-  const trendDescription = profile.hasTimeDimension
-    ? `Tendencia de ${profile.primaryMetric}${
-        profile.secondaryMetric ? `, ${profile.secondaryMetric}` : ''
-      } e registros acima do 75o percentil.`
-    : `Medias por ${profile.groupingDimension} com destaque para registros acima do 75o percentil.`
-
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.titleBlock}>
-          <h1 className={`gradient-text ${styles.title}`}>Graficos</h1>
+          <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
           <p className={styles.subtitle}>
-            Visualizacoes geradas automaticamente de acordo com a estrutura real do dataset.
+            Dashboard de vigilância epidemiológica de doenças virais contagiosas.
           </p>
         </div>
 
         <div className={styles.headerActions}>
-          <Button type="button" variant="outline" size="sm" className={styles.headerButton}>
-            <Filter size={16} />
-            <span>Filtros avancados</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void navigate('/datasets/new')}
+          >
+            <Download size={16} />
+            <span>Importar</span>
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={styles.headerButton}
-            onClick={() => exportDatasetAsCsv(selectedDataset)}
+            onClick={() => void navigate('/datasets/list')}
           >
-            <Download size={16} />
-            <span>Exportar CSV</span>
+            <RefreshCcw size={16} />
+            <span>Trocar dataset</span>
           </Button>
         </div>
       </header>
 
-      <section className={styles.controlBar} aria-label="Controles da pagina de graficos">
+      <section className={styles.controlBar} aria-label="Selecionar dataset ativo">
         <div className={styles.controlGroup}>
           <label className={styles.controlLabel} htmlFor="charts-dataset-select">
             Dataset ativo
@@ -360,436 +320,192 @@ export default function ChartsPage() {
           </select>
         </div>
 
-        <div className={styles.periodBlock}>
-          <span className={styles.controlLabel}>
-            <CalendarRange size={14} />
-            <span>{showTemporalControls ? 'Janela temporal' : 'Agrupamento detectado'}</span>
-          </span>
-          {showTemporalControls ? (
-            <div className={styles.periodSwitch} role="tablist" aria-label="Selecionar periodo">
-              {PERIOD_OPTIONS.map((period) => (
-                <button
-                  key={period.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={selectedPeriod === period.id}
-                  className={`${styles.periodButton} ${
-                    selectedPeriod === period.id ? styles.periodButtonActive : ''
-                  }`}
-                  onClick={() => setSelectedPeriod(period.id)}
-                >
-                  {period.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <span className={styles.controlLabel}>{profile.groupingDimension}</span>
-          )}
+        <div className={styles.datasetMeta}>
+          <span className={styles.metaLabel}>Arquivo</span>
+          <strong className={styles.metaValue}>{selectedDataset.name}</strong>
+          <span className={styles.metaHint}>{selectedDataset.sizeLabel}</span>
         </div>
       </section>
 
-      <section className={styles.statsGrid} aria-label="Resumo rapido de metricas">
-        {statCards.map((card) => {
-          const Icon = card.icon
-          const hintClassName =
-            card.hintTone === 'up'
-              ? styles.hintUp
-              : card.hintTone === 'down'
-                ? styles.hintDown
-                : styles.hintNeutral
+      <section className={styles.kpiGrid} aria-label="KPIs principais">
+        <article className={styles.kpiCard}>
+          <span className={styles.kpiIcon}>
+            <Users size={20} />
+          </span>
+          <div className={styles.kpiBody}>
+            <span className={styles.kpiLabel}>Casos</span>
+            <strong className={styles.kpiValue}>{formatInteger(kpis.cases)}</strong>
+          </div>
+        </article>
 
-          return (
-            <article key={card.key} className={styles.statCard}>
-              <span
-                className={styles.statIcon}
-                style={{
-                  color: card.tone,
-                  borderColor: `color-mix(in srgb, ${card.tone} 40%, transparent)`,
-                  background: `color-mix(in srgb, ${card.tone} 14%, transparent)`,
-                }}
-              >
-                <Icon size={18} />
-              </span>
-              <div className={styles.statBody}>
-                <span className={styles.statLabel}>{card.label}</span>
-                <strong className={styles.statValue}>{card.value}</strong>
-                <span className={`${styles.statHint} ${hintClassName}`}>{card.hint}</span>
-              </div>
-            </article>
-          )
-        })}
+        <article className={styles.kpiCard}>
+          <span className={styles.kpiIcon}>
+            <Skull size={20} />
+          </span>
+          <div className={styles.kpiBody}>
+            <span className={styles.kpiLabel}>Óbitos</span>
+            <strong className={styles.kpiValue}>{formatInteger(kpis.deaths)}</strong>
+          </div>
+        </article>
+
+        <article className={styles.kpiCard}>
+          <span className={styles.kpiIcon}>
+            <BadgePercent size={20} />
+          </span>
+          <div className={styles.kpiBody}>
+            <span className={styles.kpiLabel}>Letalidade</span>
+            <strong className={styles.kpiValue}>{formatPercent(kpis.lethality)}</strong>
+          </div>
+        </article>
       </section>
 
-      <section className={styles.chartsGrid} aria-label="Visualizacoes principais">
-        <article className={`${styles.chartCard} ${styles.chartCardLarge}`}>
-          <div className={styles.chartHeader}>
-            <div className={styles.chartTitleWrap}>
-              <h2 className={styles.chartTitle}>
-                <Activity size={18} className={styles.chartIcon} />
-                {trendTitle}
+      <section className={styles.grid} aria-label="Análise temporal e categórica">
+        <article className={`${styles.card} ${styles.cardWide}`}>
+          <div className={styles.cardHeader}>
+            <div>
+              <h2 className={styles.cardTitle}>
+                <CalendarRange size={18} />
+                Temporal
               </h2>
-              <p className={styles.chartDescription}>{trendDescription}</p>
-            </div>
-            <span className={styles.chartBadge}>Linha</span>
-          </div>
-          <div className={styles.chartViewport}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={visibleTrendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke={chartPalette.grid} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="group"
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  yAxisId="left"
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                  width={42}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                  width={42}
-                />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(value, name) =>
-                    typeof value === 'number'
-                      ? [formatInteger(value), String(name)]
-                      : [String(value), String(name)]
-                  }
-                />
-                <Legend wrapperStyle={legendStyle} />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="primary"
-                  name={primaryLineName}
-                  stroke={chartPalette.primary}
-                  strokeWidth={2.6}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-                {hasSecondarySeries && (
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="secondary"
-                    name={secondaryLineName}
-                    stroke={chartPalette.info}
-                    strokeWidth={2.4}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                )}
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="highCount"
-                  name={highCountLineName}
-                  stroke={chartPalette.warning}
-                  strokeDasharray="6 4"
-                  strokeWidth={2.2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className={styles.chartCard}>
-          <div className={styles.chartHeader}>
-            <div className={styles.chartTitleWrap}>
-              <h2 className={styles.chartTitle}>
-                <BarChart3 size={18} className={styles.chartIcon} />
-                Percentual acima de P75 por grupo
-              </h2>
-              <p className={styles.chartDescription}>
-                Compara grupos do dataset e mostra o percentual de registros acima do 75o percentil.
+              <p className={styles.cardDescription}>
+                Curva epidemiológica: notificações por período, média móvel e variação.
               </p>
             </div>
-            <span className={styles.chartBadge}>Barras</span>
+            <span className={styles.badge}>{trendRows.length} períodos</span>
           </div>
-          <div className={styles.chartViewport}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={segmentData}
-                layout="vertical"
-                margin={{ top: 6, right: 8, left: 0, bottom: 6 }}
-              >
-                <CartesianGrid
-                  stroke={chartPalette.grid}
-                  strokeDasharray="3 3"
-                  horizontal={false}
-                />
-                <XAxis
-                  type="number"
-                  domain={[0, 100]}
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="segment"
-                  width={84}
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(value, name) =>
-                    typeof value === 'number'
-                      ? [formatPercent(value), String(name)]
-                      : [String(value), String(name)]
-                  }
-                />
-                <Bar dataKey="ratio" name="Acima de P75" radius={[0, 10, 10, 0]}>
-                  {segmentData.map((entry) => (
-                    <Cell
-                      key={entry.segment}
-                      fill={getRiskBarColor(entry.ratio, chartPalette)}
-                      stroke="none"
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
 
-        <article className={styles.chartCard}>
-          <div className={styles.chartHeader}>
-            <div className={styles.chartTitleWrap}>
-              <h2 className={styles.chartTitle}>
-                <BarChart3 size={18} className={styles.chartIcon} />
-                Distribuicao de {profile.primaryMetric}
-              </h2>
-              <p className={styles.chartDescription}>
-                Histograma automatico da metrica principal com destaque para valores acima de P75.
-              </p>
-            </div>
-            <span className={styles.chartBadge}>Histograma</span>
-          </div>
-          <div className={styles.chartViewport}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={histogramData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke={chartPalette.grid} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="bucket"
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis stroke={chartPalette.muted} tickLine={false} axisLine={false} width={38} />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(value, name) =>
-                    typeof value === 'number'
-                      ? [formatInteger(value), String(name)]
-                      : [String(value), String(name)]
-                  }
-                />
-                <Legend wrapperStyle={legendStyle} />
-                <Bar dataKey="total" name="Total" fill={chartPalette.info} radius={[8, 8, 0, 0]} />
-                <Bar
-                  dataKey="aboveThreshold"
-                  name="Acima de P75"
-                  fill={chartPalette.danger}
-                  radius={[8, 8, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        {hasCorrelation ? (
-          <article className={styles.chartCard}>
-            <div className={styles.chartHeader}>
-              <div className={styles.chartTitleWrap}>
-                <h2 className={styles.chartTitle}>
-                  <ScatterChartIcon size={18} className={styles.chartIcon} />
-                  Correlacao principal
-                </h2>
-                <p className={styles.chartDescription}>
-                  Relacao entre {profile.primaryMetric} e {profile.secondaryMetric}, com tamanho da
-                  bolha baseado em {profile.tertiaryMetric ?? profile.primaryMetric}.
-                </p>
-              </div>
-              <span className={styles.chartBadge}>Scatter</span>
-            </div>
-            <div className={styles.chartViewport}>
+          <div className={styles.chartBox}>
+            {trendRows.length ? (
               <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                  <CartesianGrid stroke={chartPalette.grid} strokeDasharray="3 3" />
-                  <XAxis
-                    type="number"
-                    dataKey="x"
-                    name={profile.primaryMetric}
-                    stroke={chartPalette.muted}
-                    tickLine={false}
-                    axisLine={false}
+                <ComposedChart data={trendRows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                  <CartesianGrid
+                    stroke="var(--color-border-strong, #d4d4d8)"
+                    strokeDasharray="3 3"
                   />
-                  <YAxis
-                    type="number"
-                    dataKey="y"
-                    name={profile.secondaryMetric ?? 'Metrica secundaria'}
-                    stroke={chartPalette.muted}
-                    tickLine={false}
-                    axisLine={false}
-                    width={42}
-                  />
-                  <ZAxis
-                    type="number"
-                    dataKey="size"
-                    range={[90, 280]}
-                    name={profile.tertiaryMetric ?? profile.primaryMetric}
-                  />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} width={44} />
                   <Tooltip
-                    cursor={{ strokeDasharray: '4 4' }}
-                    contentStyle={tooltipContentStyle}
-                    labelStyle={tooltipLabelStyle}
                     formatter={(value, name) =>
                       typeof value === 'number'
-                        ? [String(value), String(name)]
+                        ? [formatDecimal(value), String(name)]
                         : [String(value), String(name)]
                     }
                   />
-                  <Scatter data={correlationData} dataKey="y">
-                    {correlationData.map((entry, index) => (
-                      <Cell
-                        key={`${entry.x}-${entry.y}-${index}`}
-                        fill={getRiskColor(entry.level, chartPalette)}
-                      />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-            <div className={styles.scatterLegend}>
-              {['Baixo', 'Moderado', 'Alto'].map((risk) => (
-                <span key={risk} className={styles.scatterLegendItem}>
-                  <span
-                    className={styles.scatterLegendDot}
-                    style={{ backgroundColor: getRiskColor(risk, chartPalette) }}
+                  <Bar dataKey="cases" fill="var(--color-primary, #ff2d55)" radius={[8, 8, 0, 0]} />
+                  <Line
+                    type="monotone"
+                    dataKey="movingAverage"
+                    stroke="var(--color-info, #0a84ff)"
+                    strokeWidth={2.5}
+                    dot={false}
                   />
-                  {risk}
-                </span>
-              ))}
-            </div>
-          </article>
-        ) : (
-          <article className={styles.chartCard}>
-            <div className={styles.chartHeader}>
-              <div className={styles.chartTitleWrap}>
-                <h2 className={styles.chartTitle}>
-                  <ScatterChartIcon size={18} className={styles.chartIcon} />
-                  Correlacao principal
-                </h2>
-                <p className={styles.chartDescription}>
-                  Este dataset nao possui duas metricas numericas suficientes para grafico de
-                  correlacao.
-                </p>
-              </div>
-              <span className={styles.chartBadge}>N/A</span>
-            </div>
-            <div className={styles.chartViewport}>
-              <p className={styles.chartDescription}>
-                Adicione pelo menos duas colunas numericas para habilitar esta visualizacao.
-              </p>
-            </div>
-          </article>
-        )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className={styles.placeholder}>Sem série temporal suficiente para exibir.</div>
+            )}
+          </div>
 
-        <article className={`${styles.chartCard} ${styles.chartCardLarge}`}>
-          <div className={styles.chartHeader}>
-            <div className={styles.chartTitleWrap}>
-              <h2 className={styles.chartTitle}>
-                <Gauge size={18} className={styles.chartIcon} />
-                Faixa interquartil dos indicadores
+          <div className={styles.trendSummary}>
+            <div>
+              <span className={styles.summaryLabel}>Média móvel</span>
+              <strong className={styles.summaryValue}>
+                {formatDecimal(safeAverage(trendRows.map((row) => row.movingAverage)))}
+              </strong>
+            </div>
+            <div>
+              <span className={styles.summaryLabel}>Variação %</span>
+              <strong className={styles.summaryValue}>{formatPercent(trendVariation)}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div>
+              <h2 className={styles.cardTitle}>
+                <BarChart3 size={18} />
+                Categóricos
               </h2>
-              <p className={styles.chartDescription}>
-                Visualizacao estilo box-plot para os indicadores numericos mais relevantes.
+              <p className={styles.cardDescription}>
+                Distribuição dos casos por categorias demográficas e epidemiológicas.
               </p>
             </div>
-            <span className={styles.chartBadge}>Distribuicao</span>
+            <span className={styles.badge}>Contagem + %</span>
           </div>
-          <div className={styles.chartViewport}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={distributionData}
-                margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
-              >
-                <CartesianGrid stroke={chartPalette.grid} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="indicador"
-                  stroke={chartPalette.muted}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis stroke={chartPalette.muted} tickLine={false} axisLine={false} width={38} />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(value, name) =>
-                    typeof value === 'number'
-                      ? [formatInteger(value), String(name)]
-                      : [String(value), String(name)]
-                  }
-                />
-                <Legend wrapperStyle={legendStyle} />
-                <Bar dataKey="q1" stackId="spread" fill="transparent" name="Q1 (base)" />
-                <Bar
-                  dataKey="iqr"
-                  stackId="spread"
-                  fill={chartPalette.primaryLight}
-                  name="Faixa Q1-Q3"
-                  radius={[10, 10, 0, 0]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="median"
-                  name="Mediana"
-                  stroke={chartPalette.primary}
-                  strokeWidth={2.4}
-                  dot={{ r: 3 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="min"
-                  name="Minimo"
-                  stroke={chartPalette.info}
-                  strokeWidth={2}
-                  strokeDasharray="6 4"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="max"
-                  name="Maximo"
-                  stroke={chartPalette.warning}
-                  strokeWidth={2}
-                  strokeDasharray="6 4"
-                  dot={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+
+          <div className={styles.categoryList}>
+            {categoryRows.length ? (
+              categoryRows.map((entry) => (
+                <div key={entry.segment} className={styles.categoryRow}>
+                  <div className={styles.categoryLabelWrap}>
+                    <strong className={styles.categoryLabel}>{entry.segment}</strong>
+                    <span className={styles.categoryMeta}>
+                      {formatInteger(entry.count)} registros
+                    </span>
+                  </div>
+                  <strong className={styles.categoryRatio}>{formatPercent(entry.ratio)}</strong>
+                </div>
+              ))
+            ) : (
+              <div className={styles.placeholder}>Sem distribuição categórica suficiente.</div>
+            )}
           </div>
-          <p className={styles.distributionHint}>
-            O perfil e os graficos sao gerados automaticamente a partir da estrutura detectada.
-          </p>
         </article>
+      </section>
+
+      <section className={styles.grid} aria-label="Resumo numérico">
+        {numericPanels.map((panel) => (
+          <article key={panel.key} className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div>
+                <h2 className={styles.cardTitle}>
+                  <Sigma size={18} />
+                  {panel.label}
+                </h2>
+                <p className={styles.cardDescription}>{panel.hint}</p>
+              </div>
+              <span className={styles.badge}>Numérico</span>
+            </div>
+
+            <div className={styles.numericGrid}>
+              <div className={styles.numericItem}>
+                <span className={styles.summaryLabel}>Média</span>
+                <strong className={styles.numericValue}>{formatDecimal(panel.stats.media)}</strong>
+              </div>
+              <div className={styles.numericItem}>
+                <span className={styles.summaryLabel}>Mediana</span>
+                <strong className={styles.numericValue}>
+                  {formatDecimal(panel.stats.mediana)}
+                </strong>
+              </div>
+              <div className={styles.numericItem}>
+                <span className={styles.summaryLabel}>Mínimo</span>
+                <strong className={styles.numericValue}>{formatDecimal(panel.stats.minimo)}</strong>
+              </div>
+              <div className={styles.numericItem}>
+                <span className={styles.summaryLabel}>Máximo</span>
+                <strong className={styles.numericValue}>{formatDecimal(panel.stats.maximo)}</strong>
+              </div>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <section className={styles.summaryCard}>
+        <div className={styles.cardHeader}>
+          <div>
+            <h2 className={styles.cardTitle}>
+              <Activity size={18} />
+              Resumo Epidemiológico
+            </h2>
+            <p className={styles.cardDescription}>
+              Síntese dos indicadores de vigilância viral do dataset ativo.
+            </p>
+          </div>
+        </div>
+
+        <p className={styles.summaryText}>{summaryText}</p>
       </section>
     </div>
   )

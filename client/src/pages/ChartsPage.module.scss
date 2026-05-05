@@ -1,5 +1,4 @@
 @use "@styles/variables" as *;
-@use "@styles/mixins" as *;
 
 .page {
   width: min(100%, 78rem);
@@ -33,7 +32,6 @@
 
 .subtitle {
   color: var(--color-text-secondary, $color-text-secondary);
-  font-size: $font-size-base;
 }
 
 .headerActions {
@@ -43,20 +41,23 @@
   flex-wrap: wrap;
 }
 
-.headerButton {
-  min-width: 9.5rem;
-}
-
-.controlBar {
+.controlBar,
+.kpiCard,
+.card,
+.summaryCard,
+.emptyState {
   border: 1px solid var(--color-border, $color-border);
   border-radius: $radius-2xl;
   background: var(--color-surface, $color-surface);
   box-shadow: var(--shadow-sm, $shadow-sm);
+}
+
+.controlBar {
+  padding: $space-4 $space-5;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: $space-4;
-  padding: $space-4 $space-5;
   flex-wrap: wrap;
 }
 
@@ -68,187 +69,109 @@
   flex: 1 1 16rem;
 }
 
-.controlLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-2;
+.controlLabel,
+.metaLabel,
+.summaryLabel {
   color: var(--color-text-secondary, $color-text-secondary);
-  font-size: $font-size-sm;
-  font-weight: $font-weight-medium;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .select {
-  width: 100%;
   min-height: 2.7rem;
   border-radius: $radius-lg;
   border: 1px solid var(--color-border-strong, $color-border-strong);
   background: var(--color-surface-2, $color-surface-2);
   color: var(--color-text-primary, $color-text-primary);
   padding: 0 $space-4;
-  transition:
-    border-color $transition-fast,
-    box-shadow $transition-fast;
-
-  &:focus-visible {
-    outline: none;
-    border-color: var(--color-primary, $color-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, $color-primary) 22%, transparent);
-  }
 }
 
-.periodBlock {
+.datasetMeta {
   display: flex;
   flex-direction: column;
-  gap: $space-2;
-}
-
-.periodSwitch {
-  display: inline-flex;
-  align-items: center;
   gap: $space-1;
-  padding: 4px;
-  border-radius: $radius-full;
-  border: 1px solid var(--color-border, $color-border);
-  background: var(--color-surface-2, $color-surface-2);
+  min-width: 12rem;
 }
 
-.periodButton {
-  min-width: 3.2rem;
-  border-radius: $radius-full;
-  border: 1px solid transparent;
+.metaValue,
+.metaHint {
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.metaHint {
   color: var(--color-text-secondary, $color-text-secondary);
-  font-size: $font-size-xs;
-  font-weight: $font-weight-semibold;
-  letter-spacing: 0.03em;
-  padding: $space-2 $space-3;
-  transition:
-    color $transition-fast,
-    border-color $transition-fast,
-    background-color $transition-fast;
-
-  &:hover {
-    color: var(--color-text-primary, $color-text-primary);
-  }
+  font-size: $font-size-sm;
 }
 
-.periodButtonActive {
-  background: color-mix(in srgb, var(--color-primary, $color-primary) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-primary, $color-primary) 42%, transparent);
-  color: var(--color-primary, $color-primary);
-}
-
-.statsGrid {
+.kpiGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: $space-4;
 }
 
-.statCard {
-  border: 1px solid var(--color-border, $color-border);
-  border-radius: $radius-xl;
-  background: var(--color-surface, $color-surface);
-  box-shadow: var(--shadow-sm, $shadow-sm);
+.kpiCard {
   padding: $space-4;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: $space-3;
   min-width: 0;
 }
 
-.statIcon {
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: $radius-md;
-  border: 1px solid transparent;
+.kpiIcon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: $radius-lg;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  color: var(--color-primary, $color-primary);
+  background: color-mix(in srgb, var(--color-primary, $color-primary) 12%, transparent);
 }
 
-.statBody {
+.kpiBody {
   display: flex;
   flex-direction: column;
   gap: $space-1;
-  min-width: 0;
 }
 
-.statLabel {
+.kpiLabel {
   color: var(--color-text-secondary, $color-text-secondary);
   font-size: $font-size-sm;
-  font-weight: $font-weight-medium;
-  overflow-wrap: break-word;
-  word-break: break-word;
 }
 
-.statValue {
+.kpiValue {
   color: var(--color-text-primary, $color-text-primary);
-  font-size: clamp(1.15rem, 1.9vw, 1.6rem);
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  font-size: clamp(1.2rem, 2vw, 1.7rem);
 }
 
-.statHint {
-  font-size: $font-size-xs;
-  font-weight: $font-weight-medium;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
-.hintUp {
-  color: var(--color-success, $color-success);
-}
-
-.hintDown {
-  color: var(--color-danger, $color-danger);
-}
-
-.hintNeutral {
-  color: var(--color-text-muted, $color-text-muted);
-}
-
-.chartsGrid {
+.grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: $space-4;
 }
 
-.chartCard {
-  border: 1px solid var(--color-border, $color-border);
-  border-radius: $radius-2xl;
-  background: var(--color-surface, $color-surface);
-  box-shadow: var(--shadow-sm, $shadow-sm);
+.card,
+.summaryCard {
   padding: $space-4;
-  min-height: 22rem;
-  display: flex;
-  flex-direction: column;
-  gap: $space-4;
-  overflow: hidden;
 }
 
-.chartCardLarge {
+.cardWide {
   grid-column: 1 / -1;
 }
 
-.chartHeader {
+.cardHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: $space-3;
-  flex-wrap: wrap;
+  margin-bottom: $space-4;
 }
 
-.chartTitleWrap {
-  display: flex;
-  flex-direction: column;
-  gap: $space-1;
-  min-width: 0;
-  flex: 1;
-}
-
-.chartTitle {
-  display: flex;
-  align-items: flex-start;
+.cardTitle {
+  display: inline-flex;
+  align-items: center;
   gap: $space-2;
   color: var(--color-text-primary, $color-text-primary);
   font-size: $font-size-lg;
@@ -262,64 +185,118 @@
   }
 }
 
-.chartIcon {
-  color: var(--color-primary, $color-primary);
-}
-
-.chartDescription {
+.cardDescription {
   color: var(--color-text-secondary, $color-text-secondary);
   font-size: $font-size-sm;
-  max-width: 62ch;
-  overflow-wrap: break-word;
-  word-break: break-word;
 }
 
-.chartBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.badge {
   border-radius: $radius-full;
   border: 1px solid var(--color-border-strong, $color-border-strong);
   background: var(--color-surface-2, $color-surface-2);
   color: var(--color-text-secondary, $color-text-secondary);
   padding: $space-1 $space-3;
   font-size: $font-size-xs;
-  font-weight: $font-weight-medium;
-  white-space: nowrap;
-  flex-shrink: 0;
+  font-weight: $font-weight-semibold;
 }
 
-.chartViewport {
-  flex: 1;
-  min-height: 14.5rem;
+.chartBox {
+  min-height: 18rem;
+}
+
+.placeholder {
+  min-height: 18rem;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-secondary, $color-text-secondary);
+  border-radius: $radius-xl;
+  background: color-mix(in srgb, var(--color-surface-2, $color-surface-2) 70%, transparent);
+}
+
+.trendSummary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+  margin-top: $space-4;
+  padding-top: $space-4;
+  border-top: 1px solid var(--color-border, $color-border);
+}
+
+.summaryValue {
+  color: var(--color-text-primary, $color-text-primary);
+  display: block;
+  margin-top: $space-1;
+  font-size: $font-size-lg;
+}
+
+.categoryList {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.categoryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  border-radius: $radius-lg;
+  padding: $space-3 $space-4;
+  background: var(--color-surface-2, $color-surface-2);
+}
+
+.categoryLabelWrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
   min-width: 0;
 }
 
-.scatterLegend {
-  display: flex;
-  align-items: center;
-  gap: $space-3;
-  flex-wrap: wrap;
+.categoryLabel,
+.categoryRatio,
+.summaryText,
+.numericValue {
+  color: var(--color-text-primary, $color-text-primary);
 }
 
-.scatterLegendItem {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-2;
+.categoryMeta {
   color: var(--color-text-secondary, $color-text-secondary);
-  font-size: $font-size-xs;
+  font-size: $font-size-sm;
 }
 
-.scatterLegendDot {
-  width: 0.62rem;
-  height: 0.62rem;
-  border-radius: 50%;
+.categoryRatio {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  white-space: nowrap;
 }
 
-.distributionHint {
-  margin-top: -$space-2;
-  color: var(--color-text-muted, $color-text-muted);
-  font-size: $font-size-xs;
+.numericGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+}
+
+.numericItem {
+  border-radius: $radius-lg;
+  padding: $space-3;
+  background: var(--color-surface-2, $color-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.numericValue {
+  font-size: $font-size-xl;
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.summaryText {
+  line-height: 1.6;
 }
 
 .infoBanner {
@@ -350,9 +327,6 @@
 }
 
 .emptyState {
-  border: 1px dashed var(--color-border-strong, $color-border-strong);
-  border-radius: $radius-2xl;
-  background: color-mix(in srgb, var(--color-surface, $color-surface) 84%, transparent);
   padding: $space-8;
   display: flex;
   flex-direction: column;
@@ -362,23 +336,15 @@
 
 .emptyStateText {
   color: var(--color-text-secondary, $color-text-secondary);
-  max-width: 54ch;
-}
-
-// ─── Responsive ──────────────────────────────────────────────────────────────
-
-@media (max-width: 74rem) {
-  .statsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  max-width: 56ch;
 }
 
 @media (max-width: 64rem) {
-  .chartsGrid {
+  .grid {
     grid-template-columns: 1fr;
   }
 
-  .chartCardLarge {
+  .cardWide {
     grid-column: auto;
   }
 }
@@ -392,29 +358,18 @@
     width: 100%;
   }
 
-  .headerButton {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .controlBar {
-    padding: $space-4;
+  .kpiGrid,
+  .numericGrid,
+  .trendSummary {
+    grid-template-columns: 1fr;
   }
 
   .controlGroup {
     flex-basis: 100%;
   }
 
-  .periodBlock {
-    width: 100%;
-  }
-
-  .periodSwitch {
-    width: 100%;
-  }
-
-  .periodButton {
-    flex: 1;
+  .controlBar {
+    padding: $space-4;
   }
 
   .chartTitle {
@@ -423,39 +378,12 @@
 }
 
 @media (max-width: 40rem) {
-  .statsGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .chartCard {
-    padding: $space-3;
-    min-height: 18rem;
-  }
-
-  .chartBadge {
-    font-size: 0.65rem;
-    padding: $space-1 $space-2;
-  }
-
-  .chartViewport {
-    min-height: 12rem;
-  }
-
-  .statCard {
-    padding: $space-3;
-  }
-
-  .statIcon {
-    width: 2.2rem;
-    height: 2.2rem;
+  .categoryRow {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .emptyState {
-    align-items: stretch;
-    padding: $space-4;
-  }
-
-  .infoBanner {
-    padding: $space-3;
+    padding: $space-6;
   }
 }

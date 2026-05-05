@@ -172,6 +172,153 @@
   font-size: $font-size-sm;
 }
 
+.mappingCard {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  border: 1px solid
+    color-mix(in srgb, var(--color-primary, $color-primary) 16%, var(--color-border, $color-border));
+  border-radius: $radius-xl;
+  background: color-mix(
+    in srgb,
+    var(--color-primary, $color-primary) 4%,
+    var(--color-surface, $color-surface)
+  );
+  padding: $space-5;
+}
+
+.mappingHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+}
+
+.mappingTitle {
+  color: var(--color-text-primary, $color-text-primary);
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+}
+
+.mappingSubtitle {
+  margin-top: $space-1;
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-sm;
+}
+
+.mappingStatus {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-sm;
+}
+
+.columnChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.columnChip {
+  border-radius: $radius-full;
+  border: 1px solid color-mix(in srgb, var(--color-primary, $color-primary) 16%, transparent);
+  background: color-mix(in srgb, var(--color-primary, $color-primary) 10%, transparent);
+  color: var(--color-text-primary, $color-text-primary);
+  padding: $space-1 $space-3;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.sampleTableWrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-lg;
+  background: var(--color-surface, $color-surface);
+}
+
+.sampleTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 42rem;
+
+  th,
+  td {
+    padding: $space-3 $space-4;
+    border-bottom: 1px solid var(--color-border, $color-border);
+    text-align: left;
+    font-size: $font-size-sm;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background: var(--color-surface-2, #f1f5f9);
+    color: var(--color-text-primary, $color-text-primary);
+    font-weight: $font-weight-semibold;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.mappingGroups {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+.mappingGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.mappingGroupTitle {
+  color: var(--color-text-primary, $color-text-primary);
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+}
+
+.mappingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+}
+
+.mappingField {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.mappingFieldLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2;
+  color: var(--color-text-primary, $color-text-primary);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+
+  strong {
+    border-radius: $radius-full;
+    background: color-mix(in srgb, var(--color-primary, $color-primary) 12%, transparent);
+    color: var(--color-primary, $color-primary);
+    padding: 0.15rem 0.55rem;
+    font-size: 0.7rem;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.mappingSelect {
+  width: 100%;
+  border-radius: $radius-md;
+  border: 1px solid var(--color-border, $color-border);
+  background: var(--color-surface, $color-surface);
+  color: var(--color-text-primary, $color-text-primary);
+  padding: $space-3 $space-3;
+  font-size: $font-size-sm;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -234,6 +381,14 @@
 @media (max-width: 48rem) {
   .card {
     padding: $space-5;
+  }
+
+  .mappingHeader {
+    flex-direction: column;
+  }
+
+  .mappingGrid {
+    grid-template-columns: 1fr;
   }
 
   .dropzone {

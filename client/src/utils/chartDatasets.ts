@@ -1,41 +1,6 @@
+import { getSupabaseAccessToken } from '@/lib/supabase'
+
 type RiskLevel = 'Baixo' | 'Moderado' | 'Alto'
-
-export type TrendPoint = {
-  group: string
-  sampleSize: number
-  primary: number
-  secondary: number | null
-  highCount: number
-  lowShare: number
-}
-
-export type HistogramPoint = {
-  bucket: string
-  total: number
-  aboveThreshold: number
-}
-
-export type SegmentSharePoint = {
-  segment: string
-  ratio: number
-}
-
-export type CorrelationPoint = {
-  x: number
-  y: number
-  size: number
-  level: RiskLevel
-}
-
-export type DistributionPoint = {
-  indicador: string
-  min: number
-  q1: number
-  median: number
-  q3: number
-  max: number
-  iqr: number
-}
 
 export type ChartDatasetProfile = {
   rowCount: number
@@ -50,6 +15,8 @@ export type ChartDatasetProfile = {
   segmentData: SegmentSharePoint[]
   correlationData: CorrelationPoint[]
   distributionData: DistributionPoint[]
+  metrics: Record<string, MetricStatistics>
+  timeSeriesData: Array<{ date: string; [key: string]: unknown }>
 }
 
 export type ChartDatasetRecord = {
@@ -62,9 +29,44 @@ export type ChartDatasetRecord = {
   extension: string
   source: 'seed' | 'upload'
   profile: ChartDatasetProfile
+  fieldMapping?: SinanFieldMapping
+  sourcePreset?: string | null
 }
 
 type RowRecord = Record<string, unknown>
+type TrendPoint = {
+  group: string
+  sampleSize: number
+  primary: number
+  secondary: number | null
+  highCount: number
+  lowShare: number
+}
+type HistogramPoint = {
+  bucket: string
+  total: number
+  aboveThreshold: number
+}
+type SegmentSharePoint = {
+  segment: string
+  ratio: number
+  count: number
+}
+type CorrelationPoint = {
+  x: number
+  y: number
+  size: number
+  level: RiskLevel
+}
+type DistributionPoint = {
+  indicador: string
+  min: number
+  q1: number
+  median: number
+  q3: number
+  max: number
+  iqr: number
+}
 type GroupedAggregate = {
   primaryValues: number[]
   secondaryValues: number[]
@@ -87,7 +89,6 @@ type CategoricalCandidate = {
   uniquenessRatio: number
 }
 
-const STORAGE_KEY = 'healthlens-chart-datasets'
 const ACTIVE_DATASET_KEY = 'healthlens-active-dataset-id'
 const PROFILE_VERSION = 2
 const MAX_ROWS_TO_PROFILE = 5000
@@ -95,12 +96,9 @@ const MAX_SCATTER_POINTS = 240
 const MAX_TREND_GROUPS = 12
 const MAX_CATEGORY_VALUES = 40
 const MAX_SEGMENT_BARS = 10
-
-const SEED_DATASETS: Array<{ id: string; name: string; seed: number; sizeBytes: number }> = [
-  { id: 'seed-cardio-2023', name: 'Pacientes_Cardio_2023.csv', seed: 17, sizeBytes: 2516582 },
-  { id: 'seed-sangue-q1', name: 'Exames_Sangue_Q1.xlsx', seed: 29, sizeBytes: 1153434 },
-  { id: 'seed-neuro', name: 'Registros_Neurologia.json', seed: 43, sizeBytes: 5033164 },
-]
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:3003'
+const MAX_PREVIEW_ROWS = 5000
 
 const safeRound = (value: number, decimals = 0) => {
   if (!Number.isFinite(value)) return 0
@@ -151,10 +149,258 @@ const toDate = (value: unknown): Date | null => {
   return Number.isNaN(parsed.valueOf()) ? null : parsed
 }
 
+const isValidNumericValue = (
+  value: number,
+  context: 'age' | 'delay' | 'general' = 'general'
+): boolean => {
+  if (!Number.isFinite(value)) return false
+
+  // Filter Excel serial numbers, timestamps, and other garbage
+  // Excel dates: typically 0-60000 range (1900-2063)
+  // Unix timestamps (ms): typically 1000000000000+
+  if (value > 100000 || (value > 40000 && value < 50000)) return false
+
+  // Context-specific validation
+  if (context === 'age' && (value < 0 || value > 150)) return false
+  if (context === 'delay' && (value < 0 || value > 365)) return false
+
+  return true
+}
+
 const formatFileSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${safeRound(bytes / 1024, 1)} KB`
   return `${safeRound(bytes / (1024 * 1024), 1)} MB`
+}
+
+const SINAN_CATEGORY_PRIORITY = [
+  'cs_sexo',
+  'cs_raca',
+  'evolucao',
+  'classi_fin',
+  'criterio',
+  'sg_uf_not',
+  'sg_uf',
+  'id_agravo',
+] as const
+
+const getRowDate = (row: RowRecord) =>
+  toDate(row.dt_notific) ?? toDate(row.dt_sin_pri) ?? toDate(row.dt_encerra)
+
+const getBestSinanCategoryKey = (rows: RowRecord[]) => {
+  for (const key of SINAN_CATEGORY_PRIORITY) {
+    const values = rows
+      .map((row) => toPlainText(row[key]).trim())
+      .filter((value) => value.length > 0 && value.length <= 40)
+
+    const uniqueCount = new Set(values).size
+    if (values.length >= Math.max(8, Math.floor(rows.length * 0.2)) && uniqueCount >= 2) {
+      return key
+    }
+  }
+
+  return null
+}
+
+const buildHistogramFromValues = (values: number[]) => {
+  if (!values.length) {
+    return []
+  }
+
+  const sorted = [...values].sort((a, b) => a - b)
+  const min = sorted[0]
+  const max = sorted[sorted.length - 1]
+  const bins = Math.min(6, Math.max(3, Math.ceil(Math.sqrt(sorted.length))))
+  const span = Math.max(1, max - min)
+  const step = span / bins
+
+  return Array.from({ length: bins }, (_, index) => {
+    const start = min + step * index
+    const end = index === bins - 1 ? max : start + step
+    const bucketValues = sorted.filter((value) => {
+      if (index === bins - 1) return value >= start && value <= end
+      return value >= start && value < end
+    })
+
+    return {
+      bucket: `${safeRound(start, 1)}-${safeRound(end, 1)}`,
+      total: bucketValues.length,
+      aboveThreshold: 0,
+    }
+  })
+}
+
+const buildSinanTrendData = (rows: RowRecord[]) => {
+  const grouped = new Map<
+    string,
+    { sortKey: number; label: string; count: number; deaths: number }
+  >()
+
+  rows.forEach((row) => {
+    const date = getRowDate(row)
+    const year =
+      date?.getFullYear() ?? (typeof row.nu_ano === 'number' ? Math.trunc(row.nu_ano) : 0)
+    const month = date?.getMonth() ?? 0
+    const key = date ? `${year}-${String(month + 1).padStart(2, '0')}` : `year-${year}`
+    const label = date
+      ? `${date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}/${String(
+          date.getFullYear()
+        ).slice(-2)}`
+      : year
+        ? String(year)
+        : 'Sem data'
+    const current = grouped.get(key)
+    const isDeath = Number(toNumber(row.obito) ?? 0) > 0
+
+    if (current) {
+      current.count += 1
+      current.deaths += isDeath ? 1 : 0
+      return
+    }
+
+    grouped.set(key, {
+      sortKey: date ? date.getTime() : year * 100,
+      label,
+      count: 1,
+      deaths: isDeath ? 1 : 0,
+    })
+  })
+
+  return Array.from(grouped.values())
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map((entry) => ({
+      group: entry.label,
+      sampleSize: entry.count,
+      primary: entry.count,
+      secondary: entry.deaths,
+      highCount: entry.deaths,
+      lowShare: entry.count ? safeRound((entry.deaths / entry.count) * 100, 1) : 0,
+    }))
+    .slice(-12)
+}
+
+const buildSinanSegmentData = (rows: RowRecord[]) => {
+  const categoryKey = getBestSinanCategoryKey(rows)
+
+  if (!categoryKey) {
+    return [] as SegmentSharePoint[]
+  }
+
+  const grouped = new Map<string, number>()
+
+  rows.forEach((row) => {
+    const value = toPlainText(row[categoryKey]).trim() || 'Nao informado'
+    grouped.set(value, (grouped.get(value) ?? 0) + 1)
+  })
+
+  const total = Math.max(1, rows.length)
+
+  return Array.from(grouped.entries())
+    .map(([segment, count]) => ({
+      segment,
+      count,
+      ratio: safeRound((count / total) * 100, 1),
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+}
+
+const buildSinanDistribution = (label: string, values: number[]) => {
+  if (!values.length) return []
+
+  const sorted = [...values].sort((a, b) => a - b)
+  const q1 = percentile(sorted, 0.25)
+  const median = percentile(sorted, 0.5)
+  const q3 = percentile(sorted, 0.75)
+
+  return [
+    {
+      indicador: label,
+      min: safeRound(sorted[0]),
+      q1: safeRound(q1),
+      median: safeRound(median),
+      q3: safeRound(q3),
+      max: safeRound(sorted[sorted.length - 1]),
+      iqr: safeRound(q3 - q1),
+    },
+  ]
+}
+
+const buildSinanProfileFromRows = (rows: RowRecord[]): ChartDatasetProfile => {
+  const rowCount = rows.length
+  const columnCount = Array.from(
+    rows.reduce((set, row) => {
+      Object.keys(row).forEach((key) => set.add(key))
+      return set
+    }, new Set<string>())
+  ).length
+
+  const ageValues = rows
+    .map((row) => toNumber(row.nu_idade_n))
+    .filter((value): value is number => value !== null && isValidNumericValue(value, 'age'))
+  const delayValues = rows
+    .map((row) => toNumber(row.atraso_notific))
+    .filter(
+      (value): value is number =>
+        value !== null && isValidNumericValue(value, 'delay') && value >= 0
+    )
+  const closureValues = rows
+    .map((row) => toNumber(row.tempo_encerra))
+    .filter(
+      (value): value is number =>
+        value !== null && isValidNumericValue(value, 'delay') && value >= 0
+    )
+  const deathValues = rows
+    .map((row) => toNumber(row.obito))
+    .filter((value): value is number => value !== null && (value === 0 || value === 1))
+
+  const dtNotificGroups = buildSinanTrendData(rows)
+  const categoryData = buildSinanSegmentData(rows)
+  const primaryDateColumn = rows.some((row) => getRowDate(row)) ? 'dt_notific' : 'nu_ano'
+
+  const ageStats = calculateStatistics(ageValues)
+  const delayStats = calculateStatistics(delayValues)
+  const closureStats = calculateStatistics(closureValues)
+  const deathStats = calculateStatistics(deathValues)
+
+  return {
+    rowCount,
+    columnCount,
+    primaryMetric: 'nu_idade_n',
+    secondaryMetric: 'atraso_notific',
+    tertiaryMetric: 'tempo_encerra',
+    hasTimeDimension: dtNotificGroups.length > 1,
+    groupingDimension: primaryDateColumn,
+    trendData: dtNotificGroups,
+    histogramData: buildHistogramFromValues(ageValues),
+    segmentData: categoryData,
+    correlationData: [],
+    distributionData: [
+      ...buildSinanDistribution('Idade', ageValues),
+      ...buildSinanDistribution('Atraso notificação', delayValues),
+      ...buildSinanDistribution('Tempo encerramento', closureValues),
+    ],
+    metrics: {
+      nu_idade_n: ageStats,
+      atraso_notific: delayStats,
+      tempo_encerra: closureStats,
+      obito: deathStats,
+    },
+    timeSeriesData: dtNotificGroups.map((entry) => ({
+      date: entry.group,
+      cases: entry.sampleSize,
+      deaths: entry.secondary ?? 0,
+    })),
+  }
+}
+
+const buildAuthHeaders = async (): Promise<HeadersInit> => {
+  const token = await getSupabaseAccessToken()
+  const headers: HeadersInit = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
 }
 
 const toPlainText = (value: unknown) => {
@@ -199,6 +445,581 @@ const normalizeLabel = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
+
+// SINAN - Sistema de Informação de Agravos de Notificação
+export type SinanFieldKey =
+  | 'id_agravo'
+  | 'nu_ano'
+  | 'sem_not'
+  | 'dt_notific'
+  | 'dt_sin_pri'
+  | 'sg_uf_not'
+  | 'id_regiona'
+  | 'id_municip'
+  | 'id_unidade'
+  | 'sg_uf'
+  | 'id_mn_resi'
+  | 'nu_idade_n'
+  | 'cs_sexo'
+  | 'cs_gestant'
+  | 'cs_raca'
+  | 'cs_escol_n'
+  | 'classi_fin'
+  | 'criterio'
+  | 'evolucao'
+  | 'hospitaliz'
+  | 'dt_interna'
+  | 'dt_obito'
+  | 'dt_encerra'
+  | 'obito'
+  | 'atraso_notific'
+  | 'tempo_encerra'
+
+export type SinanFieldDefinition = {
+  key: SinanFieldKey
+  label: string
+  category: string
+  dataType: 'numeric' | 'categorical' | 'temporal'
+  derived?: boolean
+  required: boolean
+  recommended: boolean
+}
+
+export type SinanFieldMapping = Partial<Record<SinanFieldKey, string>>
+
+export type MetricStatistics = {
+  total: number
+  media: number
+  media_movel: number
+  mediana: number
+  minimo: number
+  maximo: number
+  desvio_padrao: number
+  p25: number
+  p75: number
+  variacao_percentual: number
+  valores: number[]
+}
+
+export type SinanPreview = {
+  columns: string[]
+  rows: RowRecord[]
+  sampleRows: RowRecord[]
+  suggestedMapping: SinanFieldMapping
+  supported: boolean
+}
+
+export const SINAN_FIELD_DEFINITIONS: SinanFieldDefinition[] = [
+  {
+    key: 'id_agravo',
+    label: 'ID_AGRAVO',
+    category: 'Identificação',
+    dataType: 'categorical',
+    required: true,
+    recommended: true,
+  },
+  {
+    key: 'nu_ano',
+    label: 'NU_ANO',
+    category: 'Notificação',
+    dataType: 'temporal',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'sem_not',
+    label: 'SEM_NOT',
+    category: 'Notificação',
+    dataType: 'temporal',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'dt_notific',
+    label: 'DT_NOTIFIC',
+    category: 'Notificação',
+    dataType: 'temporal',
+    required: true,
+    recommended: true,
+  },
+  {
+    key: 'dt_sin_pri',
+    label: 'DT_SIN_PRI',
+    category: 'Notificação',
+    dataType: 'temporal',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'sg_uf_not',
+    label: 'SG_UF_NOT',
+    category: 'Localização',
+    dataType: 'categorical',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'id_regiona',
+    label: 'ID_REGIONA',
+    category: 'Localização',
+    dataType: 'categorical',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'id_municip',
+    label: 'ID_MUNICIP',
+    category: 'Localização',
+    dataType: 'categorical',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'id_unidade',
+    label: 'ID_UNIDADE',
+    category: 'Localização',
+    dataType: 'categorical',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'sg_uf',
+    label: 'SG_UF',
+    category: 'Localização',
+    dataType: 'categorical',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'id_mn_resi',
+    label: 'ID_MN_RESI',
+    category: 'Localização',
+    dataType: 'categorical',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'nu_idade_n',
+    label: 'NU_IDADE_N',
+    category: 'Demográfico',
+    dataType: 'numeric',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'cs_sexo',
+    label: 'CS_SEXO',
+    category: 'Demográfico',
+    dataType: 'categorical',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'cs_gestant',
+    label: 'CS_GESTANT',
+    category: 'Demográfico',
+    dataType: 'categorical',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'cs_raca',
+    label: 'CS_RACA',
+    category: 'Demográfico',
+    dataType: 'categorical',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'cs_escol_n',
+    label: 'CS_ESCOL_N',
+    category: 'Demográfico',
+    dataType: 'categorical',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'classi_fin',
+    label: 'CLASSI_FIN',
+    category: 'Clínico',
+    dataType: 'categorical',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'criterio',
+    label: 'CRITERIO',
+    category: 'Clínico',
+    dataType: 'categorical',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'evolucao',
+    label: 'EVOLUCAO',
+    category: 'Desfecho',
+    dataType: 'categorical',
+    required: false,
+    recommended: true,
+  },
+  {
+    key: 'hospitaliz',
+    label: 'HOSPITALIZ',
+    category: 'Desfecho',
+    dataType: 'categorical',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'dt_interna',
+    label: 'DT_INTERNA',
+    category: 'Desfecho',
+    dataType: 'temporal',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'dt_obito',
+    label: 'DT_OBITO',
+    category: 'Desfecho',
+    dataType: 'temporal',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'dt_encerra',
+    label: 'DT_ENCERRA',
+    category: 'Desfecho',
+    dataType: 'temporal',
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'obito',
+    label: 'OBITO',
+    category: 'Derivados',
+    dataType: 'categorical',
+    derived: true,
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'atraso_notific',
+    label: 'ATRASO_NOTIFIC',
+    category: 'Derivados',
+    dataType: 'numeric',
+    derived: true,
+    required: false,
+    recommended: false,
+  },
+  {
+    key: 'tempo_encerra',
+    label: 'TEMPO_ENCERRA',
+    category: 'Derivados',
+    dataType: 'numeric',
+    derived: true,
+    required: false,
+    recommended: false,
+  },
+]
+
+const SINAN_FIELD_ALIASES: Record<SinanFieldKey, string[]> = {
+  id_agravo: ['id_agravo', 'id agravo', 'agravo', 'cid10', 'cid-10', 'cid 10'],
+  nu_ano: ['nu_ano', 'ano', 'ano notificacao', 'ano_notificacao', 'year'],
+  sem_not: ['sem_not', 'semana not', 'semana epidemiologica', 'semana epi', 'semana notif'],
+  dt_notific: [
+    'dt_notific',
+    'data notific',
+    'data notificacao',
+    'data notificacao',
+    'notification date',
+  ],
+  dt_sin_pri: ['dt_sin_pri', 'data primeiro sintoma', 'primeiro sintoma', 'symptom date'],
+  sg_uf_not: ['sg_uf_not', 'uf notificacao', 'uf not', 'uf_not', 'uf notific'],
+  id_regiona: ['id_regiona', 'regional', 'id regional', 'regiao saude'],
+  id_municip: ['id_municip', 'id municipio', 'municipio', 'municipio id', 'municipio not'],
+  id_unidade: ['id_unidade', 'unidade', 'estabelecimento', 'cnes', 'id unidade'],
+  sg_uf: ['sg_uf', 'uf', 'estado', 'sigla uf', 'uf residencia'],
+  id_mn_resi: ['id_mn_resi', 'id municipio res', 'municipio residencia', 'mun resid'],
+  nu_idade_n: ['nu_idade_n', 'idade', 'idade n', 'idade anos', 'age'],
+  cs_sexo: ['cs_sexo', 'sexo', 'sex', 'gender'],
+  cs_gestant: ['cs_gestant', 'gestante', 'gestacao', 'gestante status'],
+  cs_raca: ['cs_raca', 'raca', 'cor', 'raca cor', 'race'],
+  cs_escol_n: ['cs_escol_n', 'escolaridade', 'escola', 'instrucao'],
+  classi_fin: ['classi_fin', 'classificacao final', 'classificacao', 'classif'],
+  criterio: ['criterio', 'criterio confirmacao', 'criterio confirm', 'criterio caso'],
+  evolucao: ['evolucao', 'evolucao caso', 'outcome', 'evolucao paciente'],
+  hospitaliz: ['hospitaliz', 'hospitalizacao', 'internacao', 'hospitalizado'],
+  dt_interna: ['dt_interna', 'data interna', 'data internacao', 'dt internacao'],
+  dt_obito: ['dt_obito', 'data obito', 'obito data', 'death date'],
+  dt_encerra: ['dt_encerra', 'dt encerra', 'data encerra', 'data encerramento'],
+  obito: [],
+  atraso_notific: [],
+  tempo_encerra: [],
+}
+
+const normalizeMappingToken = (value: string) => normalizeLabel(value).replace(/[^a-z0-9]+/g, ' ')
+
+const columnMatchesAlias = (column: string, alias: string) => {
+  const normalizedColumn = normalizeMappingToken(column)
+  const normalizedAlias = normalizeMappingToken(alias)
+
+  return (
+    normalizedColumn === normalizedAlias ||
+    normalizedColumn.includes(normalizedAlias) ||
+    normalizedAlias.includes(normalizedColumn)
+  )
+}
+
+const suggestSinanFieldMapping = (columns: string[]): SinanFieldMapping => {
+  const mapping: SinanFieldMapping = {}
+
+  SINAN_FIELD_DEFINITIONS.filter((definition) => !definition.derived).forEach(({ key }) => {
+    const aliases = SINAN_FIELD_ALIASES[key]
+    const matchedColumn = columns.find((column) =>
+      aliases.some((alias) => columnMatchesAlias(column, alias))
+    )
+
+    if (matchedColumn) {
+      mapping[key] = matchedColumn
+    }
+  })
+
+  return mapping
+}
+
+export const getSinanPreviewFromFile = async (file: File): Promise<SinanPreview> => {
+  const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`
+  const supported = extension === '.csv' || extension === '.json' || extension === '.dbc'
+
+  if (!supported) {
+    return {
+      columns: [],
+      rows: [],
+      sampleRows: [],
+      suggestedMapping: {},
+      supported: false,
+    }
+  }
+
+  const rows =
+    extension === '.dbc' ? await fetchDbcRowsFromServer(file) : await parseRowsFromFile(file)
+  const columns = Array.from(
+    rows.reduce((set, row) => {
+      Object.keys(row).forEach((key) => set.add(key))
+      return set
+    }, new Set<string>())
+  )
+
+  return {
+    columns,
+    rows,
+    sampleRows: rows.slice(0, 5),
+    suggestedMapping: suggestSinanFieldMapping(columns),
+    supported: true,
+  }
+}
+
+const getSinanFieldDefinition = (fieldKey: SinanFieldKey) =>
+  SINAN_FIELD_DEFINITIONS.find((definition) => definition.key === fieldKey) ?? null
+
+export const getSinanFieldLabel = (fieldKey: SinanFieldKey) =>
+  getSinanFieldDefinition(fieldKey)?.label ?? fieldKey
+
+export const getSinanDisplayLabel = (
+  rawColumnName: string | null | undefined,
+  fieldMapping?: SinanFieldMapping | null
+) => {
+  if (!rawColumnName) return ''
+
+  const directMatch = SINAN_FIELD_DEFINITIONS.find((definition) => definition.key === rawColumnName)
+  if (directMatch) {
+    return directMatch.label
+  }
+
+  if (fieldMapping) {
+    const mappedKey = (Object.entries(fieldMapping).find(
+      ([, columnName]) => columnName === rawColumnName
+    )?.[0] ?? null) as SinanFieldKey | null
+
+    if (mappedKey) {
+      return getSinanFieldLabel(mappedKey)
+    }
+  }
+
+  return rawColumnName
+}
+
+export const applySinanFieldMapping = (
+  rows: RowRecord[],
+  fieldMapping: SinanFieldMapping
+): RowRecord[] => {
+  const mappedEntries = Object.entries(fieldMapping).filter(
+    (entry): entry is [SinanFieldKey, string] => Boolean(entry[1])
+  )
+
+  if (!mappedEntries.length) return []
+
+  return rows.map((row) => {
+    const normalizedRow: RowRecord = {}
+
+    mappedEntries.forEach(([fieldKey, sourceColumn]) => {
+      if (fieldKey === 'nu_idade_n') {
+        normalizedRow[fieldKey] = normalizeSinanAge(row[sourceColumn])
+      } else {
+        normalizedRow[fieldKey] = row[sourceColumn]
+      }
+    })
+
+    const evolucao = toPlainText(normalizedRow.evolucao).trim()
+    normalizedRow.obito = evolucao === '2' ? 1 : evolucao ? 0 : null
+
+    const dtNotific = toDate(normalizedRow.dt_notific)
+    const dtSinPri = toDate(normalizedRow.dt_sin_pri)
+    const dtEncerra = toDate(normalizedRow.dt_encerra)
+
+    normalizedRow.atraso_notific = diffInDays(dtNotific, dtSinPri)
+    normalizedRow.tempo_encerra = diffInDays(dtEncerra, dtNotific)
+
+    return normalizedRow
+  })
+}
+
+const MOVING_AVERAGE_WINDOW = 7
+
+const calculateMovingAverage = (values: number[]) => {
+  if (!values.length) return 0
+  const windowSize = Math.min(values.length, MOVING_AVERAGE_WINDOW)
+  const slice = values.slice(-windowSize)
+  return mean(slice)
+}
+
+// Statistics calculation
+const calculateStatistics = (values: number[]): MetricStatistics => {
+  const orderedValues = values.filter((v) => Number.isFinite(v))
+  if (!orderedValues.length) {
+    return {
+      total: 0,
+      media: 0,
+      media_movel: 0,
+      mediana: 0,
+      minimo: 0,
+      maximo: 0,
+      desvio_padrao: 0,
+      p25: 0,
+      p75: 0,
+      variacao_percentual: 0,
+      valores: [],
+    }
+  }
+
+  const sorted = [...orderedValues].sort((a, b) => a - b)
+  const n = sorted.length
+  const total = sum(orderedValues)
+  const media = orderedValues.reduce((a, b) => a + b, 0) / n
+  const mediana = n % 2 === 0 ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 : sorted[Math.floor(n / 2)]
+  const minimo = sorted[0]
+  const maximo = sorted[n - 1]
+  const variance = orderedValues.reduce((sumValue, v) => sumValue + Math.pow(v - media, 2), 0) / n
+  const desvio_padrao = Math.sqrt(variance)
+  const p25 = sorted[Math.floor(n * 0.25)] ?? minimo
+  const p75 = sorted[Math.floor(n * 0.75)] ?? maximo
+  const variacao_percentual =
+    minimo !== 0 ? ((maximo - minimo) / Math.abs(minimo)) * 100 : minimo === maximo ? 0 : 100
+  const media_movel = calculateMovingAverage(orderedValues)
+
+  return {
+    total: safeRound(total, 2),
+    media: safeRound(media, 2),
+    media_movel: safeRound(media_movel, 2),
+    mediana: safeRound(mediana, 2),
+    minimo: safeRound(minimo, 2),
+    maximo: safeRound(maximo, 2),
+    desvio_padrao: safeRound(desvio_padrao, 2),
+    p25: safeRound(p25, 2),
+    p75: safeRound(p75, 2),
+    variacao_percentual: safeRound(variacao_percentual, 2),
+    valores: orderedValues,
+  }
+}
+
+const normalizeMetricStats = (
+  stats: MetricStatistics | undefined,
+  context: 'age' | 'delay' | 'general'
+): MetricStatistics | undefined => {
+  if (!stats) return undefined
+  if (!Array.isArray(stats.valores) || !stats.valores.length) return stats
+
+  const filtered = stats.valores.filter((value) => isValidNumericValue(value, context))
+  if (!filtered.length) return calculateStatistics([])
+
+  return calculateStatistics(filtered)
+}
+
+const normalizeProfileForDisplay = (profile: ChartDatasetProfile): ChartDatasetProfile => {
+  const metrics = {
+    ...profile.metrics,
+    nu_idade_n:
+      normalizeMetricStats(profile.metrics.nu_idade_n, 'age') ?? profile.metrics.nu_idade_n,
+    atraso_notific:
+      normalizeMetricStats(profile.metrics.atraso_notific, 'delay') ??
+      profile.metrics.atraso_notific,
+    tempo_encerra:
+      normalizeMetricStats(profile.metrics.tempo_encerra, 'delay') ?? profile.metrics.tempo_encerra,
+    obito: normalizeMetricStats(profile.metrics.obito, 'general') ?? profile.metrics.obito,
+  }
+
+  const segmentData = profile.segmentData.map((entry) => {
+    const ratio = Number.isFinite(entry.ratio) ? entry.ratio : 0
+    const count =
+      typeof entry.count === 'number' && Number.isFinite(entry.count)
+        ? entry.count
+        : Math.round((ratio / 100) * Math.max(1, profile.rowCount))
+
+    return {
+      ...entry,
+      ratio,
+      count,
+    }
+  })
+
+  return {
+    ...profile,
+    metrics,
+    segmentData,
+  }
+}
+
+const normalizeSinanAge = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const asString = String(Math.trunc(value))
+    return normalizeSinanAge(asString)
+  }
+
+  if (typeof value !== 'string') return null
+  const digits = value.replace(/\D+/g, '')
+  if (!digits) return null
+  if (digits.length > 4) return null
+
+  const unit = Number(digits[0])
+  const amount = Number(digits.slice(1))
+  if (!Number.isFinite(unit) || !Number.isFinite(amount)) return null
+
+  if (unit === 1) return safeRound(amount / (24 * 365), 3)
+  if (unit === 2) return safeRound(amount / 365, 3)
+  if (unit === 3) return safeRound(amount / 12, 3)
+  if (unit === 4) return amount
+
+  return null
+}
+
+const diffInDays = (later: Date | null, earlier: Date | null): number | null => {
+  if (!later || !earlier) return null
+  const diffMs = later.getTime() - earlier.getTime()
+  if (!Number.isFinite(diffMs)) return null
+  if (diffMs < 0) return null
+  return safeRound(diffMs / (1000 * 60 * 60 * 24), 2)
+}
 
 const MONTH_LOOKUP: Array<{ index: number; tokens: string[] }> = [
   { index: 0, tokens: ['jan', 'janeiro'] },
@@ -257,16 +1078,6 @@ const getNumericColumnPriority = (column: string) => {
   if (monthIndex >= 0) return 55 - monthIndex
   if (/^\d{4}$/.test(normalized)) return 50
   return 10
-}
-
-const pseudoRandom = (seed: number) => {
-  let current = seed % 2147483647
-  if (current <= 0) current += 2147483646
-
-  return () => {
-    current = (current * 16807) % 2147483647
-    return (current - 1) / 2147483646
-  }
 }
 
 const slugify = (value: string) =>
@@ -414,108 +1225,36 @@ const parseRowsFromFile = async (file: File): Promise<RowRecord[]> => {
   return []
 }
 
+const fetchDbcRowsFromServer = async (file: File): Promise<RowRecord[]> => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const headers = await buildAuthHeaders()
+    const response = await fetch(`${API_BASE_URL}/api/datasets/preview`, {
+      method: 'POST',
+      body: formData,
+      headers,
+    })
+
+    const payload = (await response.json().catch(() => null)) as { rows?: RowRecord[] } | null
+
+    if (!response.ok || !payload?.rows) return []
+    return payload.rows.slice(0, MAX_PREVIEW_ROWS)
+  } catch {
+    return []
+  }
+}
+
 const formatGroupLabel = (date: Date) =>
   `${date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}/${String(
     date.getFullYear()
   ).slice(-2)}`
 
-const buildSyntheticProfile = (seed: number, metricHint = 'valor'): ChartDatasetProfile => {
-  const random = pseudoRandom(seed)
-  const trendData: TrendPoint[] = []
-  const histogramData: HistogramPoint[] = []
-  const segmentData: SegmentSharePoint[] = []
-  const correlationData: CorrelationPoint[] = []
-
-  const months = [
-    'Jan',
-    'Fev',
-    'Mar',
-    'Abr',
-    'Mai',
-    'Jun',
-    'Jul',
-    'Ago',
-    'Set',
-    'Out',
-    'Nov',
-    'Dez',
-  ]
-
-  for (let index = 0; index < 12; index += 1) {
-    const base = 88 + random() * 35
-    const secondary = base + 8 + random() * 14
-
-    trendData.push({
-      group: months[index],
-      sampleSize: Math.round(160 + random() * 220),
-      primary: safeRound(base),
-      secondary: safeRound(secondary),
-      highCount: Math.round(18 + random() * 16),
-      lowShare: clamp(Math.round(71 + random() * 21), 40, 99),
-    })
-  }
-
-  for (let index = 0; index < 6; index += 1) {
-    const total = Math.round(70 + random() * 120)
-    const aboveThreshold = Math.round(total * (0.12 + random() * 0.22))
-    const start = 10 * index
-
-    histogramData.push({
-      bucket: `${start}-${start + 9}`,
-      total,
-      aboveThreshold,
-    })
-  }
-
-  for (let index = 0; index < 5; index += 1) {
-    segmentData.push({
-      segment: `Segmento ${index + 1}`,
-      ratio: safeRound(14 + random() * 17),
-    })
-  }
-
-  const lowRiskCut = 98
-  const highRiskCut = 118
-  for (let index = 0; index < 90; index += 1) {
-    const x = safeRound(18 + random() * 18, 1)
-    const y = safeRound(80 + random() * 68, 1)
-    const age = Math.round(21 + random() * 56)
-
-    const risk: RiskLevel = y > highRiskCut ? 'Alto' : y > lowRiskCut ? 'Moderado' : 'Baixo'
-    correlationData.push({
-      x,
-      y,
-      size: age,
-      level: risk,
-    })
-  }
-
-  const distributionData: DistributionPoint[] = [
-    { indicador: metricHint, min: 10, q1: 28, median: 42, q3: 58, max: 80, iqr: 30 },
-    { indicador: `${metricHint}_2`, min: 18, q1: 36, median: 49, q3: 64, max: 88, iqr: 28 },
-    { indicador: `${metricHint}_3`, min: 12, q1: 24, median: 39, q3: 53, max: 79, iqr: 29 },
-  ]
-
-  return {
-    rowCount: 780,
-    columnCount: 11,
-    primaryMetric: metricHint,
-    secondaryMetric: `${metricHint}_2`,
-    tertiaryMetric: `${metricHint}_3`,
-    hasTimeDimension: true,
-    groupingDimension: 'Mes',
-    trendData,
-    histogramData,
-    segmentData,
-    correlationData,
-    distributionData,
-  }
-}
-
-const buildEmptyProfile = (metricHint = 'valor'): ChartDatasetProfile => ({
+const buildEmptyProfile = (): ChartDatasetProfile => ({
   rowCount: 0,
   columnCount: 0,
-  primaryMetric: metricHint,
+  primaryMetric: 'Sem metrica numerica',
   secondaryMetric: null,
   tertiaryMetric: null,
   hasTimeDimension: false,
@@ -525,6 +1264,8 @@ const buildEmptyProfile = (metricHint = 'valor'): ChartDatasetProfile => ({
   segmentData: [],
   correlationData: [],
   distributionData: [],
+  metrics: {},
+  timeSeriesData: [],
 })
 
 const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
@@ -543,11 +1284,79 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
   const rowCount = rows.length
   const columnCount = columns.length
 
+  const hasSinanFields = rows.some(
+    (row) =>
+      Object.prototype.hasOwnProperty.call(row, 'nu_idade_n') ||
+      Object.prototype.hasOwnProperty.call(row, 'dt_notific') ||
+      Object.prototype.hasOwnProperty.call(row, 'evolucao')
+  )
+
+  if (hasSinanFields) {
+    return buildSinanProfileFromRows(rows)
+  }
+
+  // Extract numeric columns
+  const numericColumns = columns
+    .map((column) => {
+      const values = rows
+        .map((row) => toNumber(row[column]))
+        .filter((value): value is number => value !== null && isValidNumericValue(value, 'general'))
+      return {
+        column,
+        values,
+        validCount: values.length,
+      }
+    })
+    .filter((entry) => entry.validCount >= Math.max(2, Math.floor(rowCount * 0.1)))
+    .sort((a, b) => b.validCount - a.validCount)
+
+  if (!numericColumns.length) {
+    return buildEmptyProfile()
+  }
+
+  // Calculate statistics for each numeric column
+  const metrics: Record<string, MetricStatistics> = {}
+  numericColumns.forEach((entry) => {
+    metrics[entry.column] = calculateStatistics(entry.values)
+  })
+
+  // Extract time series data if date column exists
+  const dateColumn = columns.find((col) => {
+    const values = rows.map((row) => toDate(row[col]))
+    const validCount = values.filter((v) => v !== null).length
+    return validCount >= Math.max(2, Math.floor(rowCount * 0.3))
+  })
+
+  const timeSeriesData = (
+    dateColumn
+      ? rows
+          .map((row, idx) => {
+            const date = toDate(row[dateColumn])
+            if (!date) return null
+
+            const record: { date: string; [key: string]: unknown } = {
+              date: date.toISOString(),
+              _index: idx,
+            }
+
+            numericColumns.forEach((entry) => {
+              record[entry.column] = toNumber(row[entry.column])
+            })
+
+            return record
+          })
+          .filter((r): r is { date: string; [key: string]: unknown } => r !== null)
+          .slice(0, 1000)
+      : []
+  ) as Array<{ date: string; [key: string]: unknown }>
+
   const numericCoverageByColumn = new Map<string, number>()
   const numericSeries = columns
     .map((column) => {
       const series = rows.map((row) => toNumber(row[column]))
-      const validCount = series.filter((value) => value !== null).length
+      const validCount = series.filter(
+        (value): value is number => value !== null && isValidNumericValue(value, 'general')
+      ).length
       return { column, series, validCount }
     })
     .filter((entry) => entry.validCount >= Math.max(8, Math.floor(rowCount * 0.3)))
@@ -620,6 +1429,8 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
       segmentData: [],
       correlationData: [],
       distributionData: [],
+      metrics,
+      timeSeriesData,
     }
   }
 
@@ -927,6 +1738,7 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
       if (items.length && maxGroupSize > 2) {
         return items.map((item) => ({
           segment: item.segment,
+          count: item.total,
           ratio: item.ratio,
         }))
       }
@@ -945,6 +1757,7 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
 
       return {
         segment: `Q${index + 1}`,
+        count: chunk.length,
         ratio: safeRound(riskRatio, 1),
       }
     })
@@ -1029,27 +1842,30 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
     segmentData,
     correlationData,
     distributionData,
+    metrics,
+    timeSeriesData,
   }
 }
 
-const buildSeedDatasetRecord = (
-  seed: number,
-  id: string,
-  name: string,
-  sizeBytes: number
-): ChartDatasetRecord => {
-  const extension = `.${name.split('.').pop()?.toLowerCase() ?? 'csv'}`
-  return {
-    id,
-    profileVersion: PROFILE_VERSION,
-    name,
-    uploadedAt: '2026-01-10T00:00:00.000Z',
-    sizeBytes,
-    sizeLabel: formatFileSize(sizeBytes),
-    extension,
-    source: 'seed',
-    profile: buildSyntheticProfile(seed, 'indice'),
-  }
+type ServerDatasetStats = {
+  profile?: unknown
+  mapping?: unknown
+  preset?: string | null
+  fileSizeBytes?: number
+  originalName?: string
+  mimeType?: string
+}
+
+type ServerDatasetRow = {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  stats_json: ServerDatasetStats | null
+  row_count: number | null
+  column_count: number | null
+  created_at: string
+  updated_at: string
 }
 
 const isValidProfile = (profile: unknown): profile is ChartDatasetProfile => {
@@ -1072,50 +1888,89 @@ const isValidProfile = (profile: unknown): profile is ChartDatasetProfile => {
   )
 }
 
-const readStorage = (): ChartDatasetRecord[] => {
-  if (typeof window === 'undefined') return []
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf('.')
+  if (lastDotIndex === -1) return '.csv'
+  return fileName.slice(lastDotIndex).toLowerCase()
+}
 
+const getProfileFromStats = (stats: ServerDatasetStats | null): ChartDatasetProfile | null => {
+  if (!stats) return null
+  if (isValidProfile(stats)) return normalizeProfileForDisplay(stats)
+
+  if (
+    typeof stats.profile === 'object' &&
+    stats.profile !== null &&
+    isValidProfile(stats.profile)
+  ) {
+    return normalizeProfileForDisplay(stats.profile)
+  }
+
+  return null
+}
+
+const toChartDatasetRecord = (row: ServerDatasetRow): ChartDatasetRecord | null => {
+  const profile = getProfileFromStats(row.stats_json)
+  if (!profile) return null
+
+  const mapping =
+    typeof row.stats_json?.mapping === 'object' && row.stats_json.mapping !== null
+      ? (row.stats_json.mapping as SinanFieldMapping)
+      : undefined
+
+  const fileSizeBytes =
+    typeof row.stats_json?.fileSizeBytes === 'number' ? row.stats_json.fileSizeBytes : 0
+
+  return {
+    id: row.id,
+    profileVersion: PROFILE_VERSION,
+    name: row.name,
+    uploadedAt: row.created_at,
+    sizeBytes: fileSizeBytes,
+    sizeLabel: formatFileSize(fileSizeBytes),
+    extension: getFileExtension(row.name),
+    source: 'upload',
+    profile,
+    fieldMapping: mapping,
+    sourcePreset: typeof row.stats_json?.preset === 'string' ? row.stats_json.preset : null,
+  }
+}
+
+export const fetchChartDatasets = async (): Promise<ChartDatasetRecord[]> => {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
+    const headers = await buildAuthHeaders()
+    const response = await fetch(`${API_BASE_URL}/api/datasets`, { headers })
+    if (!response.ok) return []
 
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((item): item is ChartDatasetRecord => {
-      if (typeof item !== 'object' || item === null) return false
-      const maybe = item as Partial<ChartDatasetRecord>
-      return Boolean(
-        maybe.id &&
-        maybe.profileVersion === PROFILE_VERSION &&
-        maybe.name &&
-        maybe.uploadedAt &&
-        maybe.extension &&
-        maybe.profile &&
-        isValidProfile(maybe.profile)
-      )
-    })
+    const payload = (await response.json().catch(() => null)) as {
+      datasets?: ServerDatasetRow[]
+    } | null
+
+    const uploadedDatasets = (payload?.datasets ?? [])
+      .map((row) => toChartDatasetRecord(row))
+      .filter((dataset): dataset is ChartDatasetRecord => Boolean(dataset))
+
+    return uploadedDatasets
   } catch {
     return []
   }
 }
 
-const writeStorage = (datasets: ChartDatasetRecord[]) => {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(datasets))
+export const deleteChartDataset = async (datasetId: string): Promise<boolean> => {
+  if (!datasetId) return false
+
+  try {
+    const headers = await buildAuthHeaders()
+    const response = await fetch(`${API_BASE_URL}/api/datasets/${datasetId}`, {
+      method: 'DELETE',
+      headers,
+    })
+
+    return response.ok
+  } catch {
+    return false
+  }
 }
-
-export const getSeedDatasets = (): ChartDatasetRecord[] =>
-  SEED_DATASETS.map((seed) => buildSeedDatasetRecord(seed.seed, seed.id, seed.name, seed.sizeBytes))
-
-export const getUploadedDatasets = () =>
-  readStorage()
-    .filter((dataset) => dataset.source === 'upload')
-    .sort((a, b) => new Date(b.uploadedAt).valueOf() - new Date(a.uploadedAt).valueOf())
-
-export const getAllChartDatasets = (): ChartDatasetRecord[] => [
-  ...getUploadedDatasets(),
-  ...getSeedDatasets(),
-]
 
 export const setActiveChartDatasetId = (datasetId: string) => {
   if (typeof window === 'undefined') return
@@ -1127,20 +1982,20 @@ export const getActiveChartDatasetId = () => {
   return window.localStorage.getItem(ACTIVE_DATASET_KEY)
 }
 
-export const storeUploadedChartDataset = (record: ChartDatasetRecord) => {
-  const current = readStorage().filter((dataset) => dataset.source === 'upload')
-  const withoutSame = current.filter((dataset) => dataset.id !== record.id)
-  const next = [record, ...withoutSame].slice(0, 30)
-  writeStorage(next)
-}
-
-export const createChartDatasetRecordFromFile = async (file: File): Promise<ChartDatasetRecord> => {
+export const createChartDatasetRecordFromFile = async (
+  file: File,
+  fieldMapping: SinanFieldMapping = {},
+  rowsOverride?: RowRecord[]
+): Promise<ChartDatasetRecord> => {
   const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`
   let profile: ChartDatasetProfile
 
   try {
-    const rows = await parseRowsFromFile(file)
-    profile = rows.length ? buildProfileFromRows(rows) : buildEmptyProfile()
+    const rows =
+      rowsOverride ??
+      (extension === '.dbc' ? await fetchDbcRowsFromServer(file) : await parseRowsFromFile(file))
+    const mappedRows = applySinanFieldMapping(rows, fieldMapping)
+    profile = mappedRows.length ? buildProfileFromRows(mappedRows) : buildEmptyProfile()
   } catch {
     profile = buildEmptyProfile()
   }

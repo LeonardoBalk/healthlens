@@ -101,39 +101,22 @@
   }
 }
 
-.exportActions {
+.actions {
   display: flex;
   align-items: center;
-  gap: $space-2;
-  margin-left: $space-2;
+  gap: $space-3;
 }
 
-.exportButton {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-1;
-  padding: $space-1 $space-3;
-  border-radius: $radius-md;
-  border: 1px solid var(--color-border, $color-border);
-  background: var(--color-surface-2, $color-surface-2);
-  color: var(--color-text-secondary, $color-text-secondary);
-  font-size: $font-size-xs;
-  font-weight: $font-weight-medium;
-  cursor: pointer;
-  transition:
-    color $transition-fast,
-    border-color $transition-fast,
-    background-color $transition-fast,
-    transform $transition-fast;
+.deleteButton {
+  border-color: color-mix(
+    in srgb,
+    var(--color-danger, #ff453a) 50%,
+    var(--color-border, $color-border)
+  );
+  color: var(--color-danger, #ff453a);
 
-  &:hover {
-    color: var(--color-primary, $color-primary);
-    border-color: color-mix(in srgb, var(--color-primary, $color-primary) 50%, transparent);
-    background: color-mix(in srgb, var(--color-primary, $color-primary) 8%, transparent);
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-danger, #ff453a) 12%, transparent);
+    border-color: var(--color-danger, #ff453a);
   }
 }

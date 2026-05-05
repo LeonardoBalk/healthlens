@@ -37,6 +37,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       data_points: {
         Row: {
@@ -60,6 +61,7 @@ export interface Database {
           values_json?: Json
           created_at?: string
         }
+        Relationships: []
       }
       chat_messages: {
         Row: {
@@ -83,7 +85,12 @@ export interface Database {
           content?: string
           created_at?: string
         }
+        Relationships: []
       }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }

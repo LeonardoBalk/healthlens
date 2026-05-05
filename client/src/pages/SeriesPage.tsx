@@ -3,7 +3,8 @@ export default function SeriesPage() {
     <div className="page">
       <h1 className="gradient-text">Séries Temporais</h1>
       <p className="text-muted mt-4">
-        Visualize tendências e padrões ao longo do tempo nos seus dados de saúde.
+        Acompanhe curvas epidemiológicas e padrões sazonais de doenças virais contagiosas ao longo
+        do tempo.
       </p>
     </div>
   )

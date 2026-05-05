@@ -1,12 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Database, Download, FileJson, Plus } from 'lucide-react'
+import { CheckCircle2, Database, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button/Button'
 import {
-  exportDatasetAsCsv,
-  exportDatasetAsJson,
+  deleteChartDataset,
+  fetchChartDatasets,
   getActiveChartDatasetId,
-  getAllChartDatasets,
   setActiveChartDatasetId,
   type ChartDatasetRecord,
 } from '@/utils/chartDatasets'
@@ -20,12 +19,41 @@ const formatDate = (isoDate: string) => {
 
 export default function DatasetsPage() {
   const navigate = useNavigate()
-  const datasets = useMemo<ChartDatasetRecord[]>(() => getAllChartDatasets(), [])
-  const [activeDatasetId, setActiveDatasetId] = useState<string | null>(() => {
-    const activeId = getActiveChartDatasetId()
-    if (activeId && datasets.some((dataset) => dataset.id === activeId)) return activeId
-    return datasets[0]?.id ?? null
-  })
+  const [datasets, setDatasets] = useState<ChartDatasetRecord[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeDatasetId, setActiveDatasetId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadDatasets = async () => {
+      setIsLoading(true)
+      const loadedDatasets = await fetchChartDatasets()
+
+      if (cancelled) return
+
+      setDatasets(loadedDatasets)
+
+      const activeId = getActiveChartDatasetId()
+      const nextActiveId =
+        activeId && loadedDatasets.some((dataset) => dataset.id === activeId)
+          ? activeId
+          : (loadedDatasets[0]?.id ?? null)
+
+      setActiveDatasetId(nextActiveId)
+      if (nextActiveId) {
+        setActiveChartDatasetId(nextActiveId)
+      }
+      setIsLoading(false)
+    }
+
+    void loadDatasets()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const orderedDatasets = useMemo(() => {
     if (!activeDatasetId) return datasets
@@ -43,6 +71,49 @@ export default function DatasetsPage() {
   const handleSelectDataset = (datasetId: string) => {
     setActiveDatasetId(datasetId)
     setActiveChartDatasetId(datasetId)
+  }
+
+  const handleDeleteDataset = async (datasetId: string) => {
+    const target = datasets.find((dataset) => dataset.id === datasetId)
+    if (!target || target.source === 'seed') return
+
+    const confirmed = window.confirm(
+      `Excluir o dataset "${target.name}"? Essa ação não pode ser desfeita.`
+    )
+    if (!confirmed) return
+
+    setDeletingId(datasetId)
+    const deleted = await deleteChartDataset(datasetId)
+    setDeletingId(null)
+
+    if (!deleted) return
+
+    setDatasets((current) => {
+      const next = current.filter((dataset) => dataset.id !== datasetId)
+
+      if (activeDatasetId === datasetId) {
+        const nextActive = next[0]?.id ?? null
+        setActiveDatasetId(nextActive)
+        if (nextActive) {
+          setActiveChartDatasetId(nextActive)
+        }
+      }
+
+      return next
+    })
+  }
+
+  if (isLoading) {
+    return (
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <h1 className={styles.title}>Meus Datasets</h1>
+        </header>
+        <div className={styles.list}>
+          <div className={styles.datasetCard}>Carregando datasets do Supabase...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -84,15 +155,34 @@ export default function DatasetsPage() {
                 </div>
               </div>
 
-              <div className={`${styles.status} ${isActive ? styles.activeStatus : ''}`}>
-                {isActive ? (
-                  <>
-                    <CheckCircle2 size={18} />
-                    <span>Ativo</span>
-                  </>
-                ) : (
-                  <span>Selecionar</span>
+              <div className={styles.actions}>
+                {dataset.source === 'upload' && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={styles.deleteButton}
+                    disabled={deletingId === dataset.id}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      void handleDeleteDataset(dataset.id)
+                    }}
+                  >
+                    <Trash2 size={16} />
+                    <span>{deletingId === dataset.id ? 'Excluindo...' : 'Excluir'}</span>
+                  </Button>
                 )}
+
+                <div className={`${styles.status} ${isActive ? styles.activeStatus : ''}`}>
+                  {isActive ? (
+                    <>
+                      <CheckCircle2 size={18} />
+                      <span>Ativo</span>
+                    </>
+                  ) : (
+                    <span>Selecionar</span>
+                  )}
+                </div>
               </div>
 
               <div className={styles.exportActions}>

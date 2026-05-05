@@ -16,7 +16,7 @@ export function DashboardPreview() {
             <span className={styles.dotMin}></span>
             <span className={styles.dotMax}></span>
           </div>
-          <div className={styles.mockupTitle}>dashboard_preview.csv</div>
+          <div className={styles.mockupTitle}>sinan_dengue_2024.dbc</div>
         </div>
 
         <div className={styles.mockupBody}>
@@ -29,16 +29,16 @@ export function DashboardPreview() {
           <div className={styles.mockupContent}>
             <div className={styles.mockupMetrics}>
               <div className={styles.mockupCard}>
-                <p className="text-muted text-xs">Total Patients</p>
-                <h3 className="text-xl mt-2">1,245</h3>
+                <p className="text-muted text-xs">Notificações</p>
+                <h3 className="text-xl mt-2">12.847</h3>
               </div>
               <div className={styles.mockupCard}>
-                <p className="text-muted text-xs">Recovery Rate</p>
-                <h3 className="text-success text-xl mt-2">94.2%</h3>
+                <p className="text-muted text-xs">Taxa de Cura</p>
+                <h3 className="text-success text-xl mt-2">94,2%</h3>
               </div>
               <div className={styles.mockupCard}>
-                <p className="text-muted text-xs">Critical Alerts</p>
-                <h3 className="text-danger text-xl mt-2">12</h3>
+                <p className="text-muted text-xs">Alertas Epidemiológicos</p>
+                <h3 className="text-danger text-xl mt-2">8</h3>
               </div>
             </div>
 

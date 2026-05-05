@@ -290,9 +290,10 @@ export default function DatasetUploadPage() {
   return (
     <div className={styles.page}>
       <header className={styles.headingBlock}>
-        <h1 className="gradient-text">Upload de Dataset</h1>
+        <h1 className="gradient-text">Upload de Dataset Epidemiológico</h1>
         <p className={styles.subtitle}>
-          Selecione seu arquivo de dados para iniciar a analise automatica do HealthLens.
+          Selecione seu arquivo de dados de doenças virais contagiosas para iniciar a análise
+          automatica do HealthLens.
         </p>
       </header>
 
@@ -330,8 +331,12 @@ export default function DatasetUploadPage() {
           <span className={styles.uploadIcon}>
             <Upload size={28} />
           </span>
-          <p className={styles.dropzoneTitle}>Arraste seu arquivo aqui ou clique para selecionar</p>
-          <p className={styles.dropzoneHint}>Formatos suportados: {ACCEPTED_FILE_TYPES_HINT}</p>
+          <p className={styles.dropzoneTitle}>
+            Arraste seu arquivo epidemiológico aqui ou clique para selecionar
+          </p>
+          <p className={styles.dropzoneHint}>
+            Formatos suportados: {ACCEPTED_FILE_TYPES_HINT} (SINAN / DataSUS)
+          </p>
         </div>
 
         {selectedFile && (
@@ -478,7 +483,7 @@ export default function DatasetUploadPage() {
             }}
           >
             {isSubmitting && <LoaderCircle className={styles.loadingIcon} size={18} />}
-            <span>{isSubmitting ? 'Enviando arquivo...' : 'Importar SINAN'}</span>
+            <span>{isSubmitting ? 'Enviando arquivo...' : 'Importar Dados Virais'}</span>
           </Button>
         </div>
       </section>

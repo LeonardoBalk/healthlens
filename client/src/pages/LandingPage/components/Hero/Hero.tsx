@@ -13,17 +13,17 @@ export function Hero() {
         className={styles.heroContent}
       >
         <h1 className="font-normal">
-          <span className="gradient-text-primary font-semibold">Data Science </span>
-          para a Saúde
+          <span className="gradient-text-primary font-semibold">Vigilância Epidemiológica </span>
+          de Doenças Virais
         </h1>
         <p className="text-secondary text-xl mt-6">
-          Plataforma intuitiva para análise de dados médicos. Gere estatísticas automáticas,
-          visualize tendências e converse com seus dados usando IA.
+          Plataforma intuitiva para análise de dados de doenças virais contagiosas. Monitore surtos,
+          visualize tendências epidemiológicas e gere insights com IA a partir de dados do SINAN.
         </p>
 
         <div className={styles.heroButtons}>
           <Link to="/datasets" aria-label="Ir para datasets">
-            <Button size="lg">Analisar Dataset</Button>
+            <Button size="lg">Analisar Dados Epidemiológicos</Button>
           </Link>
         </div>
 
@@ -33,6 +33,7 @@ export function Hero() {
             <div className={styles.badgeFormat}>.CSV</div>
             <div className={styles.badgeFormat}>.JSON</div>
             <div className={styles.badgeFormat}>.XLSX</div>
+            <div className={styles.badgeFormat}>.DBC</div>
           </div>
         </div>
       </motion.div>

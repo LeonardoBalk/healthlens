@@ -3,18 +3,18 @@ import { useLocation } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 
 const routeLabels: Record<string, string> = {
-  '/': 'Overview',
+  '/': 'Painel Epidemiológico',
   '/list': 'Meus Datasets',
-  '/new': 'Upload',
-  '/series': 'Series Temporais',
-  '/charts': 'Graficos',
-  '/reports': 'Relatorios',
-  '/datasets': 'Overview',
+  '/new': 'Upload Epidemiológico',
+  '/series': 'Séries Temporais',
+  '/charts': 'Gráficos',
+  '/reports': 'Relatórios Epidemiológicos',
+  '/datasets': 'Painel Epidemiológico',
   '/datasets/list': 'Meus Datasets',
-  '/datasets/new': 'Upload',
-  '/datasets/series': 'Series Temporais',
-  '/datasets/charts': 'Graficos',
-  '/datasets/reports': 'Relatorios',
+  '/datasets/new': 'Upload Epidemiológico',
+  '/datasets/series': 'Séries Temporais',
+  '/datasets/charts': 'Gráficos',
+  '/datasets/reports': 'Relatórios Epidemiológicos',
 }
 
 interface HeaderProps {

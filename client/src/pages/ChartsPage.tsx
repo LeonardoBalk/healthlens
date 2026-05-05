@@ -245,15 +245,16 @@ export default function ChartsPage() {
           <div className={styles.titleBlock}>
             <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
             <p className={styles.subtitle}>
-              Nenhum dataset disponível. Faça upload para gerar a dashboard simplificada.
+              Nenhum dataset disponível. Faça upload de dados epidemiológicos para gerar a dashboard
+              de vigilância.
             </p>
           </div>
         </header>
 
         <section className={styles.emptyState}>
           <p className={styles.emptyStateText}>
-            A nova página trabalha só com os blocos essenciais: KPIs, temporal, numéricos,
-            categóricos e resumo final.
+            A dashboard trabalha com indicadores epidemiológicos: KPIs de notificações e óbitos,
+            curvas temporais, distribuição demográfica e resumo de indicadores virais.
           </p>
           <Button type="button" size="lg" onClick={() => void navigate('/datasets/new')}>
             <Download size={18} />
@@ -269,7 +270,9 @@ export default function ChartsPage() {
       <header className={styles.header}>
         <div className={styles.titleBlock}>
           <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
-          <p className={styles.subtitle}>Dashboard enxuta com as análises principais do SINAN.</p>
+          <p className={styles.subtitle}>
+            Dashboard de vigilância epidemiológica de doenças virais contagiosas.
+          </p>
         </div>
 
         <div className={styles.headerActions}>
@@ -365,7 +368,7 @@ export default function ChartsPage() {
                 Temporal
               </h2>
               <p className={styles.cardDescription}>
-                Casos por período, média móvel e variação percentual.
+                Curva epidemiológica: notificações por período, média móvel e variação.
               </p>
             </div>
             <span className={styles.badge}>{trendRows.length} períodos</span>
@@ -425,7 +428,7 @@ export default function ChartsPage() {
                 Categóricos
               </h2>
               <p className={styles.cardDescription}>
-                Contagem e porcentagem das categorias detectadas.
+                Distribuição dos casos por categorias demográficas e epidemiológicas.
               </p>
             </div>
             <span className={styles.badge}>Contagem + %</span>
@@ -494,9 +497,11 @@ export default function ChartsPage() {
           <div>
             <h2 className={styles.cardTitle}>
               <Activity size={18} />
-              Resumo final
+              Resumo Epidemiológico
             </h2>
-            <p className={styles.cardDescription}>Leitura rápida do dataset ativo.</p>
+            <p className={styles.cardDescription}>
+              Síntese dos indicadores de vigilância viral do dataset ativo.
+            </p>
           </div>
         </div>
 

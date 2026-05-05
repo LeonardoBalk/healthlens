@@ -219,11 +219,7 @@ export default function DatasetUploadPage() {
       return
     }
 
-    const datasetRecord = await createChartDatasetRecordFromFile(
-      selectedFile,
-      fieldMapping,
-      preview?.rows
-    )
+    const datasetRecord = await createChartDatasetRecordFromFile(selectedFile, fieldMapping)
     const formData = new FormData()
     formData.append('file', selectedFile)
     formData.append('profile', JSON.stringify(datasetRecord.profile))

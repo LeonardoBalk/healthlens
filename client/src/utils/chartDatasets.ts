@@ -50,6 +50,7 @@ type HistogramPoint = {
 type SegmentSharePoint = {
   segment: string
   ratio: number
+  count: number
 }
 type CorrelationPoint = {
   x: number
@@ -148,10 +149,249 @@ const toDate = (value: unknown): Date | null => {
   return Number.isNaN(parsed.valueOf()) ? null : parsed
 }
 
+const isValidNumericValue = (
+  value: number,
+  context: 'age' | 'delay' | 'general' = 'general'
+): boolean => {
+  if (!Number.isFinite(value)) return false
+
+  // Filter Excel serial numbers, timestamps, and other garbage
+  // Excel dates: typically 0-60000 range (1900-2063)
+  // Unix timestamps (ms): typically 1000000000000+
+  if (value > 100000 || (value > 40000 && value < 50000)) return false
+
+  // Context-specific validation
+  if (context === 'age' && (value < 0 || value > 150)) return false
+  if (context === 'delay' && (value < 0 || value > 365)) return false
+
+  return true
+}
+
 const formatFileSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${safeRound(bytes / 1024, 1)} KB`
   return `${safeRound(bytes / (1024 * 1024), 1)} MB`
+}
+
+const SINAN_CATEGORY_PRIORITY = [
+  'cs_sexo',
+  'cs_raca',
+  'evolucao',
+  'classi_fin',
+  'criterio',
+  'sg_uf_not',
+  'sg_uf',
+  'id_agravo',
+] as const
+
+const getRowDate = (row: RowRecord) =>
+  toDate(row.dt_notific) ?? toDate(row.dt_sin_pri) ?? toDate(row.dt_encerra)
+
+const getBestSinanCategoryKey = (rows: RowRecord[]) => {
+  for (const key of SINAN_CATEGORY_PRIORITY) {
+    const values = rows
+      .map((row) => toPlainText(row[key]).trim())
+      .filter((value) => value.length > 0 && value.length <= 40)
+
+    const uniqueCount = new Set(values).size
+    if (values.length >= Math.max(8, Math.floor(rows.length * 0.2)) && uniqueCount >= 2) {
+      return key
+    }
+  }
+
+  return null
+}
+
+const buildHistogramFromValues = (values: number[]) => {
+  if (!values.length) {
+    return []
+  }
+
+  const sorted = [...values].sort((a, b) => a - b)
+  const min = sorted[0]
+  const max = sorted[sorted.length - 1]
+  const bins = Math.min(6, Math.max(3, Math.ceil(Math.sqrt(sorted.length))))
+  const span = Math.max(1, max - min)
+  const step = span / bins
+
+  return Array.from({ length: bins }, (_, index) => {
+    const start = min + step * index
+    const end = index === bins - 1 ? max : start + step
+    const bucketValues = sorted.filter((value) => {
+      if (index === bins - 1) return value >= start && value <= end
+      return value >= start && value < end
+    })
+
+    return {
+      bucket: `${safeRound(start, 1)}-${safeRound(end, 1)}`,
+      total: bucketValues.length,
+      aboveThreshold: 0,
+    }
+  })
+}
+
+const buildSinanTrendData = (rows: RowRecord[]) => {
+  const grouped = new Map<
+    string,
+    { sortKey: number; label: string; count: number; deaths: number }
+  >()
+
+  rows.forEach((row) => {
+    const date = getRowDate(row)
+    const year =
+      date?.getFullYear() ?? (typeof row.nu_ano === 'number' ? Math.trunc(row.nu_ano) : 0)
+    const month = date?.getMonth() ?? 0
+    const key = date ? `${year}-${String(month + 1).padStart(2, '0')}` : `year-${year}`
+    const label = date
+      ? `${date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}/${String(
+          date.getFullYear()
+        ).slice(-2)}`
+      : year
+        ? String(year)
+        : 'Sem data'
+    const current = grouped.get(key)
+    const isDeath = Number(toNumber(row.obito) ?? 0) > 0
+
+    if (current) {
+      current.count += 1
+      current.deaths += isDeath ? 1 : 0
+      return
+    }
+
+    grouped.set(key, {
+      sortKey: date ? date.getTime() : year * 100,
+      label,
+      count: 1,
+      deaths: isDeath ? 1 : 0,
+    })
+  })
+
+  return Array.from(grouped.values())
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map((entry) => ({
+      group: entry.label,
+      sampleSize: entry.count,
+      primary: entry.count,
+      secondary: entry.deaths,
+      highCount: entry.deaths,
+      lowShare: entry.count ? safeRound((entry.deaths / entry.count) * 100, 1) : 0,
+    }))
+    .slice(-12)
+}
+
+const buildSinanSegmentData = (rows: RowRecord[]) => {
+  const categoryKey = getBestSinanCategoryKey(rows)
+
+  if (!categoryKey) {
+    return [] as SegmentSharePoint[]
+  }
+
+  const grouped = new Map<string, number>()
+
+  rows.forEach((row) => {
+    const value = toPlainText(row[categoryKey]).trim() || 'Nao informado'
+    grouped.set(value, (grouped.get(value) ?? 0) + 1)
+  })
+
+  const total = Math.max(1, rows.length)
+
+  return Array.from(grouped.entries())
+    .map(([segment, count]) => ({
+      segment,
+      count,
+      ratio: safeRound((count / total) * 100, 1),
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+}
+
+const buildSinanDistribution = (label: string, values: number[]) => {
+  if (!values.length) return []
+
+  const sorted = [...values].sort((a, b) => a - b)
+  const q1 = percentile(sorted, 0.25)
+  const median = percentile(sorted, 0.5)
+  const q3 = percentile(sorted, 0.75)
+
+  return [
+    {
+      indicador: label,
+      min: safeRound(sorted[0]),
+      q1: safeRound(q1),
+      median: safeRound(median),
+      q3: safeRound(q3),
+      max: safeRound(sorted[sorted.length - 1]),
+      iqr: safeRound(q3 - q1),
+    },
+  ]
+}
+
+const buildSinanProfileFromRows = (rows: RowRecord[]): ChartDatasetProfile => {
+  const rowCount = rows.length
+  const columnCount = Array.from(
+    rows.reduce((set, row) => {
+      Object.keys(row).forEach((key) => set.add(key))
+      return set
+    }, new Set<string>())
+  ).length
+
+  const ageValues = rows
+    .map((row) => toNumber(row.nu_idade_n))
+    .filter((value): value is number => value !== null && isValidNumericValue(value, 'age'))
+  const delayValues = rows
+    .map((row) => toNumber(row.atraso_notific))
+    .filter(
+      (value): value is number =>
+        value !== null && isValidNumericValue(value, 'delay') && value >= 0
+    )
+  const closureValues = rows
+    .map((row) => toNumber(row.tempo_encerra))
+    .filter(
+      (value): value is number =>
+        value !== null && isValidNumericValue(value, 'delay') && value >= 0
+    )
+  const deathValues = rows
+    .map((row) => toNumber(row.obito))
+    .filter((value): value is number => value !== null && (value === 0 || value === 1))
+
+  const dtNotificGroups = buildSinanTrendData(rows)
+  const categoryData = buildSinanSegmentData(rows)
+  const primaryDateColumn = rows.some((row) => getRowDate(row)) ? 'dt_notific' : 'nu_ano'
+
+  const ageStats = calculateStatistics(ageValues)
+  const delayStats = calculateStatistics(delayValues)
+  const closureStats = calculateStatistics(closureValues)
+  const deathStats = calculateStatistics(deathValues)
+
+  return {
+    rowCount,
+    columnCount,
+    primaryMetric: 'nu_idade_n',
+    secondaryMetric: 'atraso_notific',
+    tertiaryMetric: 'tempo_encerra',
+    hasTimeDimension: dtNotificGroups.length > 1,
+    groupingDimension: primaryDateColumn,
+    trendData: dtNotificGroups,
+    histogramData: buildHistogramFromValues(ageValues),
+    segmentData: categoryData,
+    correlationData: [],
+    distributionData: [
+      ...buildSinanDistribution('Idade', ageValues),
+      ...buildSinanDistribution('Atraso notificação', delayValues),
+      ...buildSinanDistribution('Tempo encerramento', closureValues),
+    ],
+    metrics: {
+      nu_idade_n: ageStats,
+      atraso_notific: delayStats,
+      tempo_encerra: closureStats,
+      obito: deathStats,
+    },
+    timeSeriesData: dtNotificGroups.map((entry) => ({
+      date: entry.group,
+      cases: entry.sampleSize,
+      deaths: entry.secondary ?? 0,
+    })),
+  }
 }
 
 const buildAuthHeaders = async (): Promise<HeadersInit> => {
@@ -703,6 +943,53 @@ const calculateStatistics = (values: number[]): MetricStatistics => {
   }
 }
 
+const normalizeMetricStats = (
+  stats: MetricStatistics | undefined,
+  context: 'age' | 'delay' | 'general'
+): MetricStatistics | undefined => {
+  if (!stats) return undefined
+  if (!Array.isArray(stats.valores) || !stats.valores.length) return stats
+
+  const filtered = stats.valores.filter((value) => isValidNumericValue(value, context))
+  if (!filtered.length) return calculateStatistics([])
+
+  return calculateStatistics(filtered)
+}
+
+const normalizeProfileForDisplay = (profile: ChartDatasetProfile): ChartDatasetProfile => {
+  const metrics = {
+    ...profile.metrics,
+    nu_idade_n:
+      normalizeMetricStats(profile.metrics.nu_idade_n, 'age') ?? profile.metrics.nu_idade_n,
+    atraso_notific:
+      normalizeMetricStats(profile.metrics.atraso_notific, 'delay') ??
+      profile.metrics.atraso_notific,
+    tempo_encerra:
+      normalizeMetricStats(profile.metrics.tempo_encerra, 'delay') ?? profile.metrics.tempo_encerra,
+    obito: normalizeMetricStats(profile.metrics.obito, 'general') ?? profile.metrics.obito,
+  }
+
+  const segmentData = profile.segmentData.map((entry) => {
+    const ratio = Number.isFinite(entry.ratio) ? entry.ratio : 0
+    const count =
+      typeof entry.count === 'number' && Number.isFinite(entry.count)
+        ? entry.count
+        : Math.round((ratio / 100) * Math.max(1, profile.rowCount))
+
+    return {
+      ...entry,
+      ratio,
+      count,
+    }
+  })
+
+  return {
+    ...profile,
+    metrics,
+    segmentData,
+  }
+}
+
 const normalizeSinanAge = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     const asString = String(Math.trunc(value))
@@ -712,6 +999,7 @@ const normalizeSinanAge = (value: unknown): number | null => {
   if (typeof value !== 'string') return null
   const digits = value.replace(/\D+/g, '')
   if (!digits) return null
+  if (digits.length > 4) return null
 
   const unit = Number(digits[0])
   const amount = Number(digits.slice(1))
@@ -722,13 +1010,14 @@ const normalizeSinanAge = (value: unknown): number | null => {
   if (unit === 3) return safeRound(amount / 12, 3)
   if (unit === 4) return amount
 
-  return toNumber(value)
+  return null
 }
 
 const diffInDays = (later: Date | null, earlier: Date | null): number | null => {
   if (!later || !earlier) return null
   const diffMs = later.getTime() - earlier.getTime()
   if (!Number.isFinite(diffMs)) return null
+  if (diffMs < 0) return null
   return safeRound(diffMs / (1000 * 60 * 60 * 24), 2)
 }
 
@@ -995,12 +1284,23 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
   const rowCount = rows.length
   const columnCount = columns.length
 
+  const hasSinanFields = rows.some(
+    (row) =>
+      Object.prototype.hasOwnProperty.call(row, 'nu_idade_n') ||
+      Object.prototype.hasOwnProperty.call(row, 'dt_notific') ||
+      Object.prototype.hasOwnProperty.call(row, 'evolucao')
+  )
+
+  if (hasSinanFields) {
+    return buildSinanProfileFromRows(rows)
+  }
+
   // Extract numeric columns
   const numericColumns = columns
     .map((column) => {
       const values = rows
         .map((row) => toNumber(row[column]))
-        .filter((value): value is number => value !== null)
+        .filter((value): value is number => value !== null && isValidNumericValue(value, 'general'))
       return {
         column,
         values,
@@ -1054,7 +1354,9 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
   const numericSeries = columns
     .map((column) => {
       const series = rows.map((row) => toNumber(row[column]))
-      const validCount = series.filter((value) => value !== null).length
+      const validCount = series.filter(
+        (value): value is number => value !== null && isValidNumericValue(value, 'general')
+      ).length
       return { column, series, validCount }
     })
     .filter((entry) => entry.validCount >= Math.max(8, Math.floor(rowCount * 0.3)))
@@ -1436,6 +1738,7 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
       if (items.length && maxGroupSize > 2) {
         return items.map((item) => ({
           segment: item.segment,
+          count: item.total,
           ratio: item.ratio,
         }))
       }
@@ -1454,6 +1757,7 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
 
       return {
         segment: `Q${index + 1}`,
+        count: chunk.length,
         ratio: safeRound(riskRatio, 1),
       }
     })
@@ -1592,14 +1896,14 @@ const getFileExtension = (fileName: string) => {
 
 const getProfileFromStats = (stats: ServerDatasetStats | null): ChartDatasetProfile | null => {
   if (!stats) return null
-  if (isValidProfile(stats)) return stats
+  if (isValidProfile(stats)) return normalizeProfileForDisplay(stats)
 
   if (
     typeof stats.profile === 'object' &&
     stats.profile !== null &&
     isValidProfile(stats.profile)
   ) {
-    return stats.profile
+    return normalizeProfileForDisplay(stats.profile)
   }
 
   return null

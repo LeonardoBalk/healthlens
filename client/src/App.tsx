@@ -8,6 +8,8 @@ import ReportsPage from './pages/ReportsPage'
 import LoginPage from './pages/LoginPage/LoginPage'
 import DatasetUploadPage from './pages/DatasetUploadPage/DatasetUploadPage'
 import DatasetsPage from './pages/DatasetsPage/DatasetsPage'
+import SettingsPage from './pages/SettingsPage/SettingsPage'
+import ProfilePage from './pages/ProfilePage/ProfilePage'
 import RequireAuth from './components/auth/RequireAuth'
 import './App.scss'
 
@@ -29,6 +31,8 @@ function App() {
               <Route path="series" element={<SeriesPage />} />
               <Route path="charts" element={<ChartsPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
           </Route>
           <Route path="/overview" element={<Navigate to="/datasets" replace />} />

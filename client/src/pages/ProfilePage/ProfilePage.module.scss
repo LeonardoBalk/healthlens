@@ -1,0 +1,329 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.page {
+  width: min(100%, 52rem);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.title {
+  font-size: clamp(1.75rem, 3vw, 2.3rem);
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.subtitle {
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+// Avatar card
+.avatarCard {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-2xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+  padding: $space-8 $space-6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-4;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5rem;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-primary, $color-primary) 18%, transparent),
+      color-mix(in srgb, var(--color-primary, $color-primary) 6%, transparent)
+    );
+  }
+}
+
+.avatar {
+  position: relative;
+  z-index: 1;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: $radius-full;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary, $color-primary),
+    var(--color-primary-dark, $color-primary-dark)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: $font-size-3xl;
+  font-weight: $font-weight-bold;
+  letter-spacing: -0.02em;
+  box-shadow:
+    0 0 0 4px var(--color-surface, $color-surface),
+    0 0 0 6px color-mix(in srgb, var(--color-primary, $color-primary) 30%, transparent);
+}
+
+.avatarName {
+  position: relative;
+  z-index: 1;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-bold;
+  color: var(--color-text-primary, $color-text-primary);
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.avatarEmail {
+  position: relative;
+  z-index: 1;
+  font-size: $font-size-sm;
+  color: var(--color-text-secondary, $color-text-secondary);
+  text-align: center;
+}
+
+.avatarBadge {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-1 $space-3;
+  border-radius: $radius-full;
+  background: color-mix(in srgb, var(--color-success, $color-success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success, $color-success) 30%, transparent);
+  color: var(--color-success, $color-success);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+}
+
+// Sections
+.section {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-2xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-5 $space-6;
+  border-bottom: 1px solid var(--color-border, $color-border);
+}
+
+.sectionIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: $radius-lg;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, $color-primary);
+  background: color-mix(in srgb, var(--color-primary, $color-primary) 12%, transparent);
+  flex-shrink: 0;
+}
+
+.sectionTitleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.sectionDescription {
+  font-size: $font-size-sm;
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  padding: $space-4 $space-6;
+  transition: background-color $transition-fast;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--color-border, $color-border);
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-surface-2, $color-surface-2) 50%, transparent);
+  }
+}
+
+.infoLabel {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--color-text-secondary, $color-text-secondary);
+  min-width: 8rem;
+  flex-shrink: 0;
+}
+
+.infoValue {
+  font-size: $font-size-base;
+  color: var(--color-text-primary, $color-text-primary);
+  text-align: right;
+  word-break: break-all;
+}
+
+.infoValueMono {
+  font-family: $font-mono;
+  font-size: $font-size-sm;
+}
+
+// Actions
+.actions {
+  display: flex;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-5;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border-strong, $color-border-strong);
+  background: var(--color-surface-2, $color-surface-2);
+  color: var(--color-text-primary, $color-text-primary);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition:
+    border-color $transition-fast,
+    background-color $transition-fast,
+    transform $transition-fast;
+
+  &:hover {
+    border-color: var(--color-primary, $color-primary);
+    background: color-mix(in srgb, var(--color-primary, $color-primary) 8%, transparent);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.dangerButton {
+  border-color: color-mix(
+    in srgb,
+    var(--color-danger, $color-danger) 50%,
+    var(--color-border, $color-border)
+  );
+  color: var(--color-danger, $color-danger);
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-danger, $color-danger) 12%, transparent);
+    border-color: var(--color-danger, $color-danger);
+  }
+}
+
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  padding: $space-16;
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.spinner {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: $space-8;
+  z-index: $z-toast;
+  transform: translateX(-50%);
+  border-radius: $radius-full;
+  border: 1px solid transparent;
+  padding: $space-3 $space-5;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--color-text-primary, $color-text-primary);
+  box-shadow: var(--shadow-md, $shadow-md);
+  animation: toastIn 200ms ease-out;
+}
+
+.toastSuccess {
+  background: rgba(48, 209, 88, 0.15);
+  border-color: rgba(48, 209, 88, 0.35);
+}
+
+.toastError {
+  background: rgba(255, 69, 58, 0.15);
+  border-color: rgba(255, 69, 58, 0.35);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 48rem) {
+  .page {
+    gap: $space-4;
+  }
+
+  .avatarCard {
+    padding: $space-6 $space-4;
+  }
+
+  .sectionHeader {
+    padding: $space-4 $space-5;
+  }
+
+  .infoRow {
+    padding: $space-4 $space-5;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $space-2;
+  }
+
+  .infoValue {
+    text-align: left;
+  }
+}

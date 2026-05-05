@@ -1,0 +1,278 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.page {
+  width: min(100%, 52rem);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.title {
+  font-size: clamp(1.75rem, 3vw, 2.3rem);
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.subtitle {
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.section {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-2xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-5 $space-6;
+  border-bottom: 1px solid var(--color-border, $color-border);
+}
+
+.sectionIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: $radius-lg;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, $color-primary);
+  background: color-mix(in srgb, var(--color-primary, $color-primary) 12%, transparent);
+  flex-shrink: 0;
+}
+
+.sectionTitleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.sectionDescription {
+  font-size: $font-size-sm;
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  padding: $space-4 $space-6;
+  transition: background-color $transition-fast;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--color-border, $color-border);
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-surface-2, $color-surface-2) 50%, transparent);
+  }
+}
+
+.settingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+  flex: 1;
+}
+
+.settingLabel {
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.settingHint {
+  font-size: $font-size-sm;
+  color: var(--color-text-secondary, $color-text-secondary);
+  max-width: 40ch;
+}
+
+// Toggle switch
+.toggle {
+  position: relative;
+  width: 3rem;
+  height: 1.65rem;
+  border-radius: $radius-full;
+  background: var(--color-border-strong, $color-border-strong);
+  cursor: pointer;
+  transition: background-color $transition-base;
+  flex-shrink: 0;
+  border: none;
+  padding: 0;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: $radius-full;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform $transition-base;
+  }
+
+  &Active {
+    background: var(--color-primary, $color-primary);
+
+    &::after {
+      transform: translateX(1.35rem);
+    }
+  }
+}
+
+// Select dropdown
+.selectWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.select {
+  min-height: 2.5rem;
+  min-width: 8rem;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border-strong, $color-border-strong);
+  background: var(--color-surface-2, $color-surface-2);
+  color: var(--color-text-primary, $color-text-primary);
+  padding: 0 $space-4;
+  font-size: $font-size-sm;
+  cursor: pointer;
+  transition:
+    border-color $transition-fast,
+    box-shadow $transition-fast;
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-primary, $color-primary);
+    box-shadow: 0 0 0 3px rgba(255, 45, 85, 0.2);
+  }
+}
+
+// Danger zone
+.dangerSection {
+  border-color: color-mix(
+    in srgb,
+    var(--color-danger, $color-danger) 30%,
+    var(--color-border, $color-border)
+  );
+}
+
+.dangerHeader {
+  border-bottom-color: color-mix(
+    in srgb,
+    var(--color-danger, $color-danger) 20%,
+    var(--color-border, $color-border)
+  );
+}
+
+.dangerIcon {
+  color: var(--color-danger, $color-danger);
+  background: color-mix(in srgb, var(--color-danger, $color-danger) 12%, transparent);
+}
+
+.dangerTitle {
+  color: var(--color-danger, $color-danger);
+}
+
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  border-radius: $radius-lg;
+  border: 1px solid
+    color-mix(in srgb, var(--color-danger, $color-danger) 50%, var(--color-border, $color-border));
+  background: transparent;
+  color: var(--color-danger, $color-danger);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition:
+    background-color $transition-fast,
+    border-color $transition-fast;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-danger, $color-danger) 12%, transparent);
+    border-color: var(--color-danger, $color-danger);
+  }
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: $space-8;
+  z-index: $z-toast;
+  transform: translateX(-50%);
+  border-radius: $radius-full;
+  border: 1px solid transparent;
+  padding: $space-3 $space-5;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--color-text-primary, $color-text-primary);
+  box-shadow: var(--shadow-md, $shadow-md);
+  animation: toastIn 200ms ease-out;
+}
+
+.toastSuccess {
+  background: rgba(48, 209, 88, 0.15);
+  border-color: rgba(48, 209, 88, 0.35);
+}
+
+.toastError {
+  background: rgba(255, 69, 58, 0.15);
+  border-color: rgba(255, 69, 58, 0.35);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 48rem) {
+  .page {
+    gap: $space-4;
+  }
+
+  .sectionHeader {
+    padding: $space-4 $space-5;
+  }
+
+  .settingRow {
+    padding: $space-4 $space-5;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $space-3;
+  }
+
+  .settingHint {
+    max-width: none;
+  }
+}

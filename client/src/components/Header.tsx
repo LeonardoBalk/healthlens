@@ -15,6 +15,8 @@ const routeLabels: Record<string, string> = {
   '/datasets/series': 'Séries Temporais',
   '/datasets/charts': 'Gráficos',
   '/datasets/reports': 'Relatórios Epidemiológicos',
+  '/datasets/settings': 'Configurações',
+  '/datasets/profile': 'Perfil',
 }
 
 interface HeaderProps {

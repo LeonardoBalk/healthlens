@@ -137,12 +137,30 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
             </span>
           </button>
-          <button className="sidebar__item" title={!isExpanded ? 'Configurações' : undefined}>
-            <Settings size={22} strokeWidth={1.8} className="sidebar__icon" />
+          <button
+            className={`sidebar__item ${location.pathname === '/datasets/settings' ? 'sidebar__item--active' : ''}`}
+            onClick={() => handleNav('/datasets/settings')}
+            title={!isExpanded ? 'Configurações' : undefined}
+            aria-current={location.pathname === '/datasets/settings' ? 'page' : undefined}
+          >
+            <Settings
+              size={22}
+              strokeWidth={location.pathname === '/datasets/settings' ? 2.5 : 1.8}
+              className="sidebar__icon"
+            />
             <span className="sidebar__label">Configurações</span>
           </button>
-          <button className="sidebar__item" title={!isExpanded ? 'Perfil' : undefined}>
-            <User size={22} strokeWidth={1.8} className="sidebar__icon" />
+          <button
+            className={`sidebar__item ${location.pathname === '/datasets/profile' ? 'sidebar__item--active' : ''}`}
+            onClick={() => handleNav('/datasets/profile')}
+            title={!isExpanded ? 'Perfil' : undefined}
+            aria-current={location.pathname === '/datasets/profile' ? 'page' : undefined}
+          >
+            <User
+              size={22}
+              strokeWidth={location.pathname === '/datasets/profile' ? 2.5 : 1.8}
+              className="sidebar__icon"
+            />
             <span className="sidebar__label">Perfil</span>
           </button>
           <button

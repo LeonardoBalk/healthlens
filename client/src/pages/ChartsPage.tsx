@@ -391,7 +391,11 @@ export default function ChartsPage() {
                         : [String(value), String(name)]
                     }
                   />
-                  <Bar dataKey="cases" fill="var(--color-primary, #ff2d55)" radius={[8, 8, 0, 0]} />
+                  <Bar
+                    dataKey="cases"
+                    fill="var(--color-chart-accent, #ff2d55)"
+                    radius={[8, 8, 0, 0]}
+                  />
                   <Line
                     type="monotone"
                     dataKey="movingAverage"

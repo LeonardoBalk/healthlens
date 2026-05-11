@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Database, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, Database, Download, FileJson, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button/Button'
 import {
   deleteChartDataset,
+  exportDatasetAsCsv,
+  exportDatasetAsJson,
   fetchChartDatasets,
   getActiveChartDatasetId,
   setActiveChartDatasetId,
@@ -183,6 +185,33 @@ export default function DatasetsPage() {
                     <span>Selecionar</span>
                   )}
                 </div>
+              </div>
+
+              <div className={styles.exportActions}>
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  title="Exportar como CSV"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    exportDatasetAsCsv(dataset)
+                  }}
+                >
+                  <Download size={15} />
+                  <span>CSV</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  title="Exportar como JSON"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    exportDatasetAsJson(dataset)
+                  }}
+                >
+                  <FileJson size={15} />
+                  <span>JSON</span>
+                </button>
               </div>
             </div>
           )

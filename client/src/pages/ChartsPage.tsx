@@ -256,15 +256,16 @@ export default function ChartsPage() {
           <div className={styles.titleBlock}>
             <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
             <p className={styles.subtitle}>
-              Nenhum dataset disponível. Faça upload para gerar a dashboard simplificada.
+              Nenhum dataset disponível. Faça upload de dados epidemiológicos para gerar a dashboard
+              de vigilância.
             </p>
           </div>
         </header>
 
         <section className={styles.emptyState}>
           <p className={styles.emptyStateText}>
-            A nova página trabalha só com os blocos essenciais: KPIs, temporal, numéricos,
-            categóricos e resumo final.
+            A dashboard trabalha com indicadores epidemiológicos: KPIs de notificações e óbitos,
+            curvas temporais, distribuição demográfica e resumo de indicadores virais.
           </p>
           <Button type="button" size="lg" onClick={() => void navigate('/datasets/new')}>
             <Download size={18} />
@@ -280,7 +281,9 @@ export default function ChartsPage() {
       <header className={styles.header}>
         <div className={styles.titleBlock}>
           <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
-          <p className={styles.subtitle}>Dashboard enxuta com as análises principais do SINAN.</p>
+          <p className={styles.subtitle}>
+            Dashboard de vigilância epidemiológica de doenças virais contagiosas.
+          </p>
         </div>
 
         <div className={styles.headerActions}>
@@ -367,67 +370,60 @@ export default function ChartsPage() {
         </article>
       </section>
 
-      {categoryDisplayRows.length ? (
-        <section className={styles.grid} aria-label="Análise categórica">
-          <article className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div>
-                <h2 className={styles.cardTitle}>
-                  <BarChart3 size={18} />
-                  Categóricos
-                </h2>
-                <p className={styles.cardDescription}>
-                  Contagem e porcentagem das categorias detectadas.
-                </p>
-              </div>
-              <span className={styles.badge}>Contagem + %</span>
+      <section className={styles.grid} aria-label="Análise categórica">
+        <article className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div>
+              <h2 className={styles.cardTitle}>
+                <BarChart3 size={18} />
+                Categóricos
+              </h2>
+              <p className={styles.cardDescription}>
+                Distribuição dos casos por categorias demográficas e epidemiológicas.
+              </p>
             </div>
+            <span className={styles.badge}>Contagem + %</span>
+          </div>
 
-            <div className={styles.miniChart}>
-              {categoryChartData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={categoryChartData}
-                    margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
-                  >
-                    <XAxis dataKey="label" hide />
-                    <YAxis hide />
-                    <Tooltip
-                      cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                      formatter={(value) => [formatInteger(Number(value)), 'Registros']}
-                    />
-                    <Bar
-                      dataKey="value"
-                      fill="var(--color-primary, #ff2d55)"
-                      radius={[6, 6, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className={styles.miniPlaceholder}>Sem dados</div>
-              )}
-            </div>
+          <div className={styles.miniChart}>
+            {categoryChartData.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={categoryChartData}
+                  margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
+                >
+                  <XAxis dataKey="label" hide />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                    formatter={(value) => [formatInteger(Number(value)), 'Registros']}
+                  />
+                  <Bar dataKey="value" fill="var(--color-primary, #ff2d55)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className={styles.miniPlaceholder}>Sem dados</div>
+            )}
+          </div>
 
-            <div className={styles.categoryList}>
-              {categoryDisplayRows.length ? (
-                categoryDisplayRows.map((entry) => (
-                  <div key={entry.segment} className={styles.categoryRow}>
-                    <div className={styles.categoryLabelWrap}>
-                      <strong className={styles.categoryLabel}>{entry.segment}</strong>
-                      <span className={styles.categoryMeta}>
-                        {formatInteger(entry.count)} registros
-                      </span>
-                    </div>
-                    <strong className={styles.categoryRatio}>{formatPercent(entry.ratio)}</strong>
+          <div className={styles.categoryList}>
+            {categoryDisplayRows.length ? (
+              categoryDisplayRows.map((entry) => (
+                <div key={entry.segment} className={styles.categoryRow}>
+                  <div className={styles.categoryLabelWrap}>
+                    <strong className={styles.categoryLabel}>{entry.segment}</strong>
+                    <span className={styles.categoryMeta}>
+                      {formatInteger(entry.count)} registros
+                    </span>
                   </div>
-                ))
-              ) : (
-                <div className={styles.placeholder}>Sem distribuição categórica suficiente.</div>
-              )}
-            </div>
-          </article>
-        </section>
-      ) : null}
+                </div>
+              ))
+            ) : (
+              <div className={styles.placeholder}>Sem distribuição categórica suficiente.</div>
+            )}
+          </div>
+        </article>
+      </section>
 
       <section className={styles.grid} aria-label="Resumo numérico">
         {numericPanels.map((panel) => (
@@ -522,9 +518,11 @@ export default function ChartsPage() {
           <div>
             <h2 className={styles.cardTitle}>
               <Activity size={18} />
-              Resumo final
+              Resumo Epidemiológico
             </h2>
-            <p className={styles.cardDescription}>Leitura rápida do dataset ativo.</p>
+            <p className={styles.cardDescription}>
+              Síntese dos indicadores de vigilância viral do dataset ativo.
+            </p>
           </div>
         </div>
 

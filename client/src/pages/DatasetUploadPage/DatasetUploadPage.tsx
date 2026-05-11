@@ -396,6 +396,11 @@ export default function DatasetUploadPage() {
             {!isPreviewLoading && preview?.supported && preview.columns.length > 0 && (
               <>
                 <p className={styles.mappingStatus}>Apenas os campos mapeados serão importados.</p>
+                <p className={styles.mappingNotice}>
+                  Campos derivados (OBITO, ATRASO_NOTIFIC e TEMPO_ENCERRA) são calculados
+                  automaticamente a partir de EVOLUCAO e datas. Se as datas estiverem ausentes,
+                  esses indicadores podem ficar zerados.
+                </p>
 
                 <div className={styles.columnChips} aria-label="Colunas detectadas">
                   {preview.columns.map((column) => (

@@ -1,13 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 
-export type ChartColorPreset = 'rose' | 'blue' | 'emerald' | 'amber' | 'violet'
-
 export type AppSettings = {
-  notifications: boolean
   animationsEnabled: boolean
-  autoSaveInterval: string
   previewRowLimit: string
-  chartColorPreset: ChartColorPreset
   recentDatasetsCount: string
   confirmBeforeDelete: boolean
 }
@@ -21,21 +16,10 @@ interface SettingsContextType {
 const STORAGE_KEY = 'healthlens-settings'
 
 const defaultSettings: AppSettings = {
-  notifications: true,
   animationsEnabled: true,
-  autoSaveInterval: '5',
   previewRowLimit: '5000',
-  chartColorPreset: 'rose',
   recentDatasetsCount: '5',
   confirmBeforeDelete: true,
-}
-
-const CHART_COLOR_MAP: Record<ChartColorPreset, string> = {
-  rose: '#ff2d55',
-  blue: '#0a84ff',
-  emerald: '#30d158',
-  amber: '#ff9f0a',
-  violet: '#af52de',
 }
 
 const loadSettings = (): AppSettings => {
@@ -59,10 +43,6 @@ const applyBodyClasses = (settings: AppSettings) => {
   } else {
     document.body.classList.remove('no-animations')
   }
-
-  // Chart accent color — sets a CSS custom property on :root so charts can use it
-  const accentColor = CHART_COLOR_MAP[settings.chartColorPreset] ?? CHART_COLOR_MAP.rose
-  document.documentElement.style.setProperty('--color-chart-accent', accentColor)
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)

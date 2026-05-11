@@ -14,16 +14,13 @@ const app = express()
 const PORT = process.env.PORT ?? 3003
 const MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024
 const ALLOWED_EXTENSIONS = new Set(['.csv', '.json', '.xlsx', '.dbc'])
-const MAX_PREVIEW_ROWS = 10000
+const MAX_PREVIEW_ROWS = Number.MAX_SAFE_INTEGER
 
 type RowRecord = Record<string, unknown>
 type AuthenticatedRequest = Request & { user?: User }
 type DatasetInsert = Database['public']['Tables']['datasets']['Insert']
 type DatasetRow = Database['public']['Tables']['datasets']['Row']
-type StatsProfile = {
-  rowCount?: number
-  columnCount?: number
-}
+type StatsProfile = Record<string, unknown>
 type StatsPayload = {
   preset: 'sinan'
   profile?: StatsProfile
@@ -53,7 +50,6 @@ const parseDbcBuffer = async (buffer: Buffer): Promise<RowRecord[]> => {
     const bytes = new Uint8Array(buffer)
     const records: RowRecord[] = []
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     for await (const record of readDbcRecords(bytes)) {
       if (record && typeof record === 'object') {
         records.push(record as RowRecord)
@@ -206,15 +202,9 @@ app.post('/api/datasets/upload', upload.single('file'), async (req: Request, res
         throw new Error('Invalid profile payload')
       }
 
-      const profileObj: StatsProfile = {}
-      if (typeof parsedProfile.rowCount === 'number')
-        profileObj.rowCount = Number(parsedProfile.rowCount)
-      if (typeof parsedProfile.columnCount === 'number')
-        profileObj.columnCount = Number(parsedProfile.columnCount)
-
       statsPayload = {
         preset: 'sinan',
-        profile: profileObj,
+        profile: parsedProfile,
         mapping: parsedMapping,
         fileSizeBytes: uploadedFile.size,
         originalName: uploadedFile.originalname,
@@ -318,7 +308,7 @@ app.post('/api/datasets/preview', upload.single('file'), async (req: Request, re
     return res.status(400).json({ message: 'Formato invalido para pre-visualizacao.' })
   }
 
-  const rows = (await parseDbcBuffer(uploadedFile.buffer)).slice(0, MAX_PREVIEW_ROWS)
+  const rows = await parseDbcBuffer(uploadedFile.buffer)
   const columns = Array.from(
     rows.reduce((set, row) => {
       Object.keys(row).forEach((key) => set.add(key))

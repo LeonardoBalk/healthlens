@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Database, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, Database, Download, FileJson, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button/Button'
 import {
   deleteChartDataset,
+  exportDatasetAsCsv,
+  exportDatasetAsJson,
   fetchChartDatasets,
   getActiveChartDatasetId,
   setActiveChartDatasetId,

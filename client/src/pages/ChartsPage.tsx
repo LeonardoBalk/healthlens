@@ -4,23 +4,13 @@ import {
   Activity,
   BadgePercent,
   BarChart3,
-  CalendarRange,
   Download,
   RefreshCcw,
   Sigma,
   Skull,
   Users,
 } from 'lucide-react'
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Button } from '@/components/ui/Button/Button'
 import {
   fetchChartDatasets,
@@ -37,12 +27,6 @@ type MetricPanel = {
   key: MetricKey
   label: string
   hint: string
-}
-
-type TrendRow = {
-  label: string
-  cases: number
-  movingAverage: number
 }
 
 type CategoryRow = {
@@ -80,20 +64,61 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('pt-BR', {
 const formatInteger = (value: number) => INTEGER_FORMATTER.format(Math.round(value))
 const formatDecimal = (value: number) => DECIMAL_FORMATTER.format(value)
 const formatPercent = (value: number) => `${formatDecimal(value)}%`
-
-const safeAverage = (values: number[]) => {
-  if (!values.length) return 0
-  return values.reduce((sum, value) => sum + value, 0) / values.length
+const formatCountPercent = (value: number, total: number) => {
+  const percent = total > 0 ? (value / total) * 100 : 0
+  return `${formatInteger(value)} (${formatPercent(percent)})`
 }
 
-const variationPercent = (values: number[]) => {
-  if (values.length < 2) return 0
-  const first = values[0]
-  const last = values[values.length - 1]
+const getTooltipLabel = (item: unknown) => {
+  if (!item || typeof item !== 'object') return ''
+  const payload = (item as { payload?: unknown }).payload
+  if (!payload || typeof payload !== 'object') return ''
+  const label = (payload as { label?: unknown }).label
+  return typeof label === 'string' ? label : ''
+}
 
-  if (first === 0) return last === 0 ? 0 : 100
+const buildAgeBins = (values: number[]) => {
+  const ranges = [
+    { label: '0-9', min: 0, max: 9 },
+    { label: '10-19', min: 10, max: 19 },
+    { label: '20-29', min: 20, max: 29 },
+    { label: '30-39', min: 30, max: 39 },
+    { label: '40-49', min: 40, max: 49 },
+    { label: '50-59', min: 50, max: 59 },
+    { label: '60-69', min: 60, max: 69 },
+    { label: '70-79', min: 70, max: 79 },
+    { label: '80+', min: 80, max: null as number | null },
+  ]
 
-  return ((last - first) / Math.abs(first)) * 100
+  return ranges.map((range) => {
+    const count = values.filter((value) => {
+      if (value < range.min) return false
+      if (range.max === null) return value >= range.min
+      return value <= range.max
+    }).length
+
+    return { label: range.label, value: count }
+  })
+}
+
+const buildDelayBins = (values: number[]) => {
+  const ranges = [
+    { label: '0-2', min: 0, max: 2 },
+    { label: '3-7', min: 3, max: 7 },
+    { label: '8-14', min: 8, max: 14 },
+    { label: '15-30', min: 15, max: 30 },
+    { label: '31+', min: 31, max: null as number | null },
+  ]
+
+  return ranges.map((range) => {
+    const count = values.filter((value) => {
+      if (value < range.min) return false
+      if (range.max === null) return value >= range.min
+      return value <= range.max
+    }).length
+
+    return { label: range.label, value: count }
+  })
 }
 
 const getFallbackStats = (): NumericStats => ({
@@ -113,19 +138,6 @@ const getFallbackStats = (): NumericStats => ({
 const getNumericStats = (profile: ChartDatasetProfile, key: MetricKey): NumericStats => {
   const stats = profile.metrics[key]
   return stats ?? getFallbackStats()
-}
-
-const getTrendRows = (profile: ChartDatasetProfile): TrendRow[] => {
-  const cases = profile.trendData.map((entry) => entry.sampleSize)
-  const averages = cases.map((_, index) =>
-    safeAverage(cases.slice(Math.max(0, index - 2), index + 1))
-  )
-
-  return profile.trendData.map((entry, index) => ({
-    label: entry.group,
-    cases: entry.sampleSize,
-    movingAverage: averages[index] ?? entry.sampleSize,
-  }))
 }
 
 const getCategoryRows = (profile: ChartDatasetProfile): CategoryRow[] =>
@@ -187,8 +199,11 @@ export default function ChartsPage() {
 
   const profile = selectedDataset?.profile ?? null
 
-  const trendRows = useMemo(() => (profile ? getTrendRows(profile) : []), [profile])
   const categoryRows = useMemo(() => (profile ? getCategoryRows(profile) : []), [profile])
+  const categoryDisplayRows = useMemo(() => {
+    const hasMeaningful = categoryRows.some((row) => row.segment !== 'Nao informado')
+    return hasMeaningful ? categoryRows : []
+  }, [categoryRows])
   const kpis = useMemo(() => (profile ? getKpis(profile) : null), [profile])
   const numericPanels = useMemo(() => {
     if (!profile) return []
@@ -196,16 +211,25 @@ export default function ChartsPage() {
     return METRIC_PANELS.map((panel) => ({
       ...panel,
       stats: getNumericStats(profile, panel.key),
-    }))
+    })).filter((panel) => panel.stats.valores.length > 0)
   }, [profile])
 
-  const trendCases = trendRows.map((row) => row.cases)
-  const trendVariation = variationPercent(trendCases)
+  const categoryChartData = useMemo(
+    () =>
+      categoryDisplayRows
+        .slice(0, 5)
+        .map((entry) => ({ label: entry.segment, value: entry.count })),
+    [categoryDisplayRows]
+  )
+  const categoryTotal = useMemo(
+    () => categoryChartData.reduce((sum, entry) => sum + entry.value, 0),
+    [categoryChartData]
+  )
 
   const summaryText = useMemo(() => {
     if (!profile || !kpis) return 'Sem dados suficientes para resumir este dataset.'
 
-    const topCategory = categoryRows[0]
+    const topCategory = categoryDisplayRows[0]
     const topMetric = numericPanels[0]?.stats
 
     const pieces = [
@@ -223,7 +247,7 @@ export default function ChartsPage() {
     }
 
     return pieces.join(' · ')
-  }, [categoryRows, kpis, numericPanels, profile])
+  }, [categoryDisplayRows, kpis, numericPanels, profile])
 
   if (isLoading) {
     return (
@@ -359,71 +383,7 @@ export default function ChartsPage() {
         </article>
       </section>
 
-      <section className={styles.grid} aria-label="Análise temporal e categórica">
-        <article className={`${styles.card} ${styles.cardWide}`}>
-          <div className={styles.cardHeader}>
-            <div>
-              <h2 className={styles.cardTitle}>
-                <CalendarRange size={18} />
-                Temporal
-              </h2>
-              <p className={styles.cardDescription}>
-                Curva epidemiológica: notificações por período, média móvel e variação.
-              </p>
-            </div>
-            <span className={styles.badge}>{trendRows.length} períodos</span>
-          </div>
-
-          <div className={styles.chartBox}>
-            {trendRows.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={trendRows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                  <CartesianGrid
-                    stroke="var(--color-border-strong, #d4d4d8)"
-                    strokeDasharray="3 3"
-                  />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} width={44} />
-                  <Tooltip
-                    formatter={(value, name) =>
-                      typeof value === 'number'
-                        ? [formatDecimal(value), String(name)]
-                        : [String(value), String(name)]
-                    }
-                  />
-                  <Bar
-                    dataKey="cases"
-                    fill="var(--color-chart-accent, #ff2d55)"
-                    radius={[8, 8, 0, 0]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="movingAverage"
-                    stroke="var(--color-info, #0a84ff)"
-                    strokeWidth={2.5}
-                    dot={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className={styles.placeholder}>Sem série temporal suficiente para exibir.</div>
-            )}
-          </div>
-
-          <div className={styles.trendSummary}>
-            <div>
-              <span className={styles.summaryLabel}>Média móvel</span>
-              <strong className={styles.summaryValue}>
-                {formatDecimal(safeAverage(trendRows.map((row) => row.movingAverage)))}
-              </strong>
-            </div>
-            <div>
-              <span className={styles.summaryLabel}>Variação %</span>
-              <strong className={styles.summaryValue}>{formatPercent(trendVariation)}</strong>
-            </div>
-          </div>
-        </article>
-
+      <section className={styles.grid} aria-label="Análise epidemiológica">
         <article className={styles.card}>
           <div className={styles.cardHeader}>
             <div>
@@ -438,9 +398,33 @@ export default function ChartsPage() {
             <span className={styles.badge}>Contagem + %</span>
           </div>
 
+          <div className={styles.miniChart}>
+            {categoryChartData.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={categoryChartData}
+                  margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
+                >
+                  <XAxis dataKey="label" hide />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                    formatter={(value) => [
+                      formatCountPercent(Number(value), categoryTotal),
+                      'Registros',
+                    ]}
+                  />
+                  <Bar dataKey="value" fill="var(--color-primary, #ff2d55)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className={styles.miniPlaceholder}>Sem dados</div>
+            )}
+          </div>
+
           <div className={styles.categoryList}>
-            {categoryRows.length ? (
-              categoryRows.map((entry) => (
+            {categoryDisplayRows.length ? (
+              categoryDisplayRows.map((entry) => (
                 <div key={entry.segment} className={styles.categoryRow}>
                   <div className={styles.categoryLabelWrap}>
                     <strong className={styles.categoryLabel}>{entry.segment}</strong>
@@ -448,7 +432,6 @@ export default function ChartsPage() {
                       {formatInteger(entry.count)} registros
                     </span>
                   </div>
-                  <strong className={styles.categoryRatio}>{formatPercent(entry.ratio)}</strong>
                 </div>
               ))
             ) : (
@@ -456,44 +439,79 @@ export default function ChartsPage() {
             )}
           </div>
         </article>
-      </section>
+        {numericPanels.map((panel) => {
+          const chartData =
+            panel.key === 'nu_idade_n'
+              ? buildAgeBins(panel.stats.valores)
+              : buildDelayBins(panel.stats.valores)
+          const chartTotal = chartData.reduce((sum, entry) => sum + entry.value, 0)
+          const chartColor =
+            panel.key === 'nu_idade_n'
+              ? 'var(--color-primary, #ff2d55)'
+              : 'var(--color-info, #0a84ff)'
 
-      <section className={styles.grid} aria-label="Resumo numérico">
-        {numericPanels.map((panel) => (
-          <article key={panel.key} className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div>
-                <h2 className={styles.cardTitle}>
-                  <Sigma size={18} />
-                  {panel.label}
-                </h2>
-                <p className={styles.cardDescription}>{panel.hint}</p>
+          return (
+            <article key={panel.key} className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <h2 className={styles.cardTitle}>
+                    <Sigma size={18} />
+                    {panel.label}
+                  </h2>
+                  <p className={styles.cardDescription}>{panel.hint}</p>
+                </div>
+                <span className={styles.badge}>Numérico</span>
               </div>
-              <span className={styles.badge}>Numérico</span>
-            </div>
 
-            <div className={styles.numericGrid}>
-              <div className={styles.numericItem}>
-                <span className={styles.summaryLabel}>Média</span>
-                <strong className={styles.numericValue}>{formatDecimal(panel.stats.media)}</strong>
+              <div className={styles.miniChart}>
+                {panel.stats.valores.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                      <XAxis dataKey="label" hide />
+                      <YAxis hide />
+                      <Tooltip
+                        formatter={(value, _name, item) => {
+                          const label = getTooltipLabel(item) || 'Registros'
+                          return [formatCountPercent(Number(value), chartTotal), label]
+                        }}
+                      />
+                      <Bar dataKey="value" fill={chartColor} radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className={styles.miniPlaceholder}>Sem dados</div>
+                )}
               </div>
-              <div className={styles.numericItem}>
-                <span className={styles.summaryLabel}>Mediana</span>
-                <strong className={styles.numericValue}>
-                  {formatDecimal(panel.stats.mediana)}
-                </strong>
+
+              <div className={styles.numericGrid}>
+                <div className={styles.numericItem}>
+                  <span className={styles.summaryLabel}>Média</span>
+                  <strong className={styles.numericValue}>
+                    {formatDecimal(panel.stats.media)}
+                  </strong>
+                </div>
+                <div className={styles.numericItem}>
+                  <span className={styles.summaryLabel}>Mediana</span>
+                  <strong className={styles.numericValue}>
+                    {formatDecimal(panel.stats.mediana)}
+                  </strong>
+                </div>
+                <div className={styles.numericItem}>
+                  <span className={styles.summaryLabel}>Mínimo</span>
+                  <strong className={styles.numericValue}>
+                    {formatDecimal(panel.stats.minimo)}
+                  </strong>
+                </div>
+                <div className={styles.numericItem}>
+                  <span className={styles.summaryLabel}>Máximo</span>
+                  <strong className={styles.numericValue}>
+                    {formatDecimal(panel.stats.maximo)}
+                  </strong>
+                </div>
               </div>
-              <div className={styles.numericItem}>
-                <span className={styles.summaryLabel}>Mínimo</span>
-                <strong className={styles.numericValue}>{formatDecimal(panel.stats.minimo)}</strong>
-              </div>
-              <div className={styles.numericItem}>
-                <span className={styles.summaryLabel}>Máximo</span>
-                <strong className={styles.numericValue}>{formatDecimal(panel.stats.maximo)}</strong>
-              </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          )
+        })}
       </section>
 
       <section className={styles.summaryCard}>

@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      read.dbc:
+        specifier: github:danicat/read.dbc
+        version: https://codeload.github.com/danicat/read.dbc/tar.gz/52e0b15e79b8917e7814b0f8c20c14ae25b9f87e
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.4
@@ -2023,6 +2027,10 @@ packages:
   react@19.2.4:
     resolution: {integrity: sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==}
     engines: {node: '>=0.10.0'}
+
+  read.dbc@https://codeload.github.com/danicat/read.dbc/tar.gz/52e0b15e79b8917e7814b0f8c20c14ae25b9f87e:
+    resolution: {tarball: https://codeload.github.com/danicat/read.dbc/tar.gz/52e0b15e79b8917e7814b0f8c20c14ae25b9f87e}
+    version: 0.0.0
 
   readable-stream@3.6.2:
     resolution: {integrity: sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==}
@@ -4629,6 +4637,8 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
 
   react@19.2.4: {}
+
+  read.dbc@https://codeload.github.com/danicat/read.dbc/tar.gz/52e0b15e79b8917e7814b0f8c20c14ae25b9f87e: {}
 
   readable-stream@3.6.2:
     dependencies:

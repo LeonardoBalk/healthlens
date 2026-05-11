@@ -68,7 +68,7 @@ export default function SettingsPage() {
           </span>
           <div className={styles.sectionTitleWrap}>
             <h2 className={styles.sectionTitle}>Aparência</h2>
-            <p className={styles.sectionDescription}>Tema da interface.</p>
+            <p className={styles.sectionDescription}>Tema e animações da interface.</p>
           </div>
         </div>
 
@@ -116,9 +116,7 @@ export default function SettingsPage() {
           </span>
           <div className={styles.sectionTitleWrap}>
             <h2 className={styles.sectionTitle}>Datasets</h2>
-            <p className={styles.sectionDescription}>
-              Limites de preview, painel e exclusão de dados.
-            </p>
+            <p className={styles.sectionDescription}>Limites de preview e exclusão de dados.</p>
           </div>
         </div>
 

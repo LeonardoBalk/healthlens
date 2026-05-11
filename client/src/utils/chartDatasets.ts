@@ -91,14 +91,13 @@ type CategoricalCandidate = {
 
 const ACTIVE_DATASET_KEY = 'healthlens-active-dataset-id'
 const PROFILE_VERSION = 2
-const MAX_ROWS_TO_PROFILE = 5000
+const MAX_ROWS_TO_PROFILE = Number.MAX_SAFE_INTEGER
 const MAX_SCATTER_POINTS = 240
 const MAX_TREND_GROUPS = 12
 const MAX_CATEGORY_VALUES = 40
 const MAX_SEGMENT_BARS = 10
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:3003'
-const MAX_PREVIEW_ROWS = 5000
 
 const safeRound = (value: number, decimals = 0) => {
   if (!Number.isFinite(value)) return 0
@@ -161,7 +160,7 @@ const isValidNumericValue = (
   if (value > 100000 || (value > 40000 && value < 50000)) return false
 
   // Context-specific validation
-  if (context === 'age' && (value < 0 || value > 150)) return false
+  if (context === 'age' && (value < 0 || value > 120)) return false
   if (context === 'delay' && (value < 0 || value > 365)) return false
 
   return true
@@ -1005,10 +1004,19 @@ const normalizeSinanAge = (value: unknown): number | null => {
   const amount = Number(digits.slice(1))
   if (!Number.isFinite(unit) || !Number.isFinite(amount)) return null
 
-  if (unit === 1) return safeRound(amount / (24 * 365), 3)
-  if (unit === 2) return safeRound(amount / 365, 3)
-  if (unit === 3) return safeRound(amount / 12, 3)
-  if (unit === 4) return amount
+  if (unit === 1) {
+    const years = amount / (24 * 365)
+    return years > 120 ? null : safeRound(years, 3)
+  }
+  if (unit === 2) {
+    const years = amount / 365
+    return years > 120 ? null : safeRound(years, 3)
+  }
+  if (unit === 3) {
+    const years = amount / 12
+    return years > 120 ? null : safeRound(years, 3)
+  }
+  if (unit === 4) return amount > 120 ? null : amount
 
   return null
 }
@@ -1240,7 +1248,7 @@ const fetchDbcRowsFromServer = async (file: File): Promise<RowRecord[]> => {
     const payload = (await response.json().catch(() => null)) as { rows?: RowRecord[] } | null
 
     if (!response.ok || !payload?.rows) return []
-    return payload.rows.slice(0, MAX_PREVIEW_ROWS)
+    return payload.rows
   } catch {
     return []
   }
@@ -1888,6 +1896,55 @@ const isValidProfile = (profile: unknown): profile is ChartDatasetProfile => {
   )
 }
 
+const coerceProfileFromPartial = (profile: unknown): ChartDatasetProfile | null => {
+  if (typeof profile !== 'object' || profile === null) return null
+  const maybe = profile as Partial<ChartDatasetProfile>
+  const emptyProfile = buildEmptyProfile()
+
+  return {
+    ...emptyProfile,
+    rowCount: typeof maybe.rowCount === 'number' ? maybe.rowCount : emptyProfile.rowCount,
+    columnCount:
+      typeof maybe.columnCount === 'number' ? maybe.columnCount : emptyProfile.columnCount,
+    primaryMetric:
+      typeof maybe.primaryMetric === 'string' ? maybe.primaryMetric : emptyProfile.primaryMetric,
+    secondaryMetric:
+      typeof maybe.secondaryMetric === 'string' || maybe.secondaryMetric === null
+        ? (maybe.secondaryMetric ?? null)
+        : emptyProfile.secondaryMetric,
+    tertiaryMetric:
+      typeof maybe.tertiaryMetric === 'string' || maybe.tertiaryMetric === null
+        ? (maybe.tertiaryMetric ?? null)
+        : emptyProfile.tertiaryMetric,
+    hasTimeDimension:
+      typeof maybe.hasTimeDimension === 'boolean'
+        ? maybe.hasTimeDimension
+        : emptyProfile.hasTimeDimension,
+    groupingDimension:
+      typeof maybe.groupingDimension === 'string'
+        ? maybe.groupingDimension
+        : emptyProfile.groupingDimension,
+    trendData: Array.isArray(maybe.trendData) ? maybe.trendData : emptyProfile.trendData,
+    histogramData: Array.isArray(maybe.histogramData)
+      ? maybe.histogramData
+      : emptyProfile.histogramData,
+    segmentData: Array.isArray(maybe.segmentData) ? maybe.segmentData : emptyProfile.segmentData,
+    correlationData: Array.isArray(maybe.correlationData)
+      ? maybe.correlationData
+      : emptyProfile.correlationData,
+    distributionData: Array.isArray(maybe.distributionData)
+      ? maybe.distributionData
+      : emptyProfile.distributionData,
+    metrics:
+      typeof maybe.metrics === 'object' && maybe.metrics !== null
+        ? maybe.metrics
+        : emptyProfile.metrics,
+    timeSeriesData: Array.isArray(maybe.timeSeriesData)
+      ? maybe.timeSeriesData
+      : emptyProfile.timeSeriesData,
+  }
+}
+
 const getFileExtension = (fileName: string) => {
   const lastDotIndex = fileName.lastIndexOf('.')
   if (lastDotIndex === -1) return '.csv'
@@ -1897,6 +1954,12 @@ const getFileExtension = (fileName: string) => {
 const getProfileFromStats = (stats: ServerDatasetStats | null): ChartDatasetProfile | null => {
   if (!stats) return null
   if (isValidProfile(stats)) return normalizeProfileForDisplay(stats)
+
+  const coercedFromProfile = coerceProfileFromPartial(stats.profile)
+  if (coercedFromProfile) return normalizeProfileForDisplay(coercedFromProfile)
+
+  const coercedFromStats = coerceProfileFromPartial(stats)
+  if (coercedFromStats) return normalizeProfileForDisplay(coercedFromStats)
 
   if (
     typeof stats.profile === 'object' &&

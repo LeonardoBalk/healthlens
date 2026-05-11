@@ -40,7 +40,6 @@
 }
 
 .controlBar,
-.kpiCard,
 .card,
 .summaryCard,
 .emptyState {
@@ -103,63 +102,21 @@
   font-size: $font-size-sm;
 }
 
-.kpiGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: $space-4;
-}
-
-.kpiCard {
+.card {
   padding: $space-4;
-  display: flex;
-  align-items: center;
-  gap: $space-3;
 }
 
-.kpiIcon {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: $radius-lg;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-primary, $color-primary);
-  background: color-mix(in srgb, var(--color-primary, $color-primary) 12%, transparent);
-}
-
-.kpiBody {
-  display: flex;
-  flex-direction: column;
-  gap: $space-1;
-}
-
-.kpiLabel {
-  color: var(--color-text-secondary, $color-text-secondary);
-  font-size: $font-size-sm;
-}
-
-.kpiValue {
-  color: var(--color-text-primary, $color-text-primary);
-  font-size: clamp(1.2rem, 2vw, 1.7rem);
-}
-
-.grid {
+.summaryGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: $space-4;
-  align-items: stretch;
 }
 
-.card,
 .summaryCard {
-  padding: $space-4;
+  padding: $space-3 $space-4;
   display: flex;
   flex-direction: column;
-  gap: $space-4;
-}
-
-.cardWide {
-  grid-column: 1 / -1;
+  gap: $space-2;
 }
 
 .cardHeader {
@@ -167,7 +124,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: $space-3;
-  min-height: 3.25rem;
+  margin-bottom: $space-4;
 }
 
 .cardTitle {
@@ -195,7 +152,8 @@
 }
 
 .chartBox {
-  min-height: 18rem;
+  height: clamp(14rem, 32vw, 20rem);
+  min-height: 14rem;
 }
 
 .placeholder {
@@ -223,93 +181,6 @@
   font-size: $font-size-lg;
 }
 
-.categoryList {
-  display: flex;
-  flex-direction: column;
-  gap: $space-2;
-  flex: 1;
-}
-
-.miniChart {
-  height: 5.5rem;
-  border-radius: $radius-lg;
-  background: color-mix(in srgb, var(--color-surface-2, $color-surface-2) 70%, transparent);
-  padding: $space-2 $space-3;
-}
-
-.miniPlaceholder {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  color: var(--color-text-secondary, $color-text-secondary);
-  font-size: $font-size-sm;
-}
-
-.categoryRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: $space-3;
-  border-radius: $radius-lg;
-  padding: $space-3 $space-4;
-  background: var(--color-surface-2, $color-surface-2);
-}
-
-.categoryLabelWrap {
-  display: flex;
-  flex-direction: column;
-  gap: $space-1;
-  min-width: 0;
-}
-
-.categoryLabel,
-.categoryRatio,
-.summaryText,
-.numericValue {
-  color: var(--color-text-primary, $color-text-primary);
-}
-
-.categoryMeta {
-  color: var(--color-text-secondary, $color-text-secondary);
-  font-size: $font-size-sm;
-}
-
-.categoryRatio {
-  font-size: $font-size-lg;
-  font-weight: $font-weight-semibold;
-  white-space: nowrap;
-}
-
-.numericGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: $space-3;
-  flex: 1;
-}
-
-.numericItem {
-  border-radius: $radius-lg;
-  padding: $space-3;
-  background: var(--color-surface-2, $color-surface-2);
-  display: flex;
-  flex-direction: column;
-  gap: $space-1;
-}
-
-.numericValue {
-  font-size: $font-size-xl;
-}
-
-.summaryCard {
-  display: flex;
-  flex-direction: column;
-  gap: $space-3;
-}
-
-.summaryText {
-  line-height: 1.6;
-}
-
 .emptyState {
   padding: $space-8;
   display: flex;
@@ -323,23 +194,11 @@
   max-width: 56ch;
 }
 
-@media (max-width: 64rem) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .cardWide {
-    grid-column: auto;
-  }
-}
-
 @media (max-width: 48rem) {
   .headerActions {
     width: 100%;
   }
 
-  .kpiGrid,
-  .numericGrid,
   .trendSummary {
     grid-template-columns: 1fr;
   }
@@ -351,15 +210,8 @@
   .controlBar {
     padding: $space-4;
   }
-}
 
-@media (max-width: 40rem) {
-  .categoryRow {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .emptyState {
-    padding: $space-6;
+  .summaryGrid {
+    grid-template-columns: 1fr;
   }
 }

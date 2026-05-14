@@ -13,12 +13,12 @@ export function Hero() {
         className={styles.heroContent}
       >
         <h1 className="font-normal">
-          <span className="gradient-text-primary font-semibold">Vigilância Epidemiológica </span>
-          de Doenças Virais
+          <span className="gradient-text-primary font-semibold">Análise de Dados </span>
+          do SINAN
         </h1>
         <p className="text-secondary text-xl mt-6">
-          Plataforma intuitiva para análise de dados de doenças virais contagiosas. Monitore surtos,
-          visualize tendências epidemiológicas e gere insights com IA a partir de dados do SINAN.
+          Plataforma para análise de dados epidemiológicos do SINAN. Visualize séries temporais,
+          explore indicadores e gere insights com IA.
         </p>
 
         <div className={styles.heroButtons}>

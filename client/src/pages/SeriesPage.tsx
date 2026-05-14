@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarRange, Download, RefreshCcw } from 'lucide-react'
 import {
@@ -6,25 +6,22 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import { Button } from '@/components/ui/Button/Button'
-import {
-  fetchChartDatasets,
-  getActiveChartDatasetId,
-  setActiveChartDatasetId,
-  type ChartDatasetProfile,
-  type ChartDatasetRecord,
-} from '@/utils/chartDatasets'
+import { useDatasets } from '@/contexts/DatasetContext'
+import { type ChartDatasetProfile } from '@/utils/chartDatasets'
 import styles from './SeriesPage.module.scss'
 
 type TrendRow = {
   label: string
   cases: number
   movingAverage: number
+  deaths: number
 }
 
 const INTEGER_FORMATTER = new Intl.NumberFormat('pt-BR')
@@ -35,7 +32,10 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('pt-BR', {
 
 const formatInteger = (value: number) => INTEGER_FORMATTER.format(Math.round(value))
 const formatDecimal = (value: number) => DECIMAL_FORMATTER.format(value)
-const formatPercent = (value: number) => `${formatDecimal(value)}%`
+const formatSignedPercent = (value: number) => {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : ''
+  return `${sign}${formatDecimal(Math.abs(value))}%`
+}
 
 const safeAverage = (values: number[]) => {
   if (!values.length) return 0
@@ -44,12 +44,11 @@ const safeAverage = (values: number[]) => {
 
 const variationPercent = (values: number[]) => {
   if (values.length < 2) return 0
-  const first = values[0]
-  const last = values[values.length - 1]
-
-  if (first === 0) return last === 0 ? 0 : 100
-
-  return ((last - first) / Math.abs(first)) * 100
+  const mid = Math.ceil(values.length / 2)
+  const firstAvg = safeAverage(values.slice(0, mid))
+  const secondAvg = safeAverage(values.slice(mid))
+  if (firstAvg === 0) return secondAvg === 0 ? 0 : 100
+  return ((secondAvg - firstAvg) / Math.abs(firstAvg)) * 100
 }
 
 const getTrendRows = (profile: ChartDatasetProfile): TrendRow[] => {
@@ -62,55 +61,20 @@ const getTrendRows = (profile: ChartDatasetProfile): TrendRow[] => {
     label: entry.group,
     cases: entry.sampleSize,
     movingAverage: averages[index] ?? entry.sampleSize,
+    deaths: entry.secondary ?? 0,
   }))
 }
 
 export default function SeriesPage() {
   const navigate = useNavigate()
-  const [datasets, setDatasets] = useState<ChartDatasetRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedDatasetId, setSelectedDatasetId] = useState('')
+  const { datasets, activeDataset, isLoading, setActiveDataset } = useDatasets()
+  const [toast, setToast] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-
-    const loadDatasets = async () => {
-      setIsLoading(true)
-      const loadedDatasets = await fetchChartDatasets()
-
-      if (cancelled) return
-
-      setDatasets(loadedDatasets)
-
-      const activeId = getActiveChartDatasetId()
-      const nextSelectedId =
-        activeId && loadedDatasets.some((dataset) => dataset.id === activeId)
-          ? activeId
-          : (loadedDatasets[0]?.id ?? '')
-
-      setSelectedDatasetId(nextSelectedId)
-      if (nextSelectedId) {
-        setActiveChartDatasetId(nextSelectedId)
-      }
-      setIsLoading(false)
-    }
-
-    void loadDatasets()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const selectedDataset = useMemo(
-    () => datasets.find((dataset) => dataset.id === selectedDatasetId) ?? null,
-    [datasets, selectedDatasetId]
-  )
-
-  const profile = selectedDataset?.profile ?? null
+  const profile = activeDataset?.profile ?? null
   const trendRows = useMemo(() => (profile ? getTrendRows(profile) : []), [profile])
   const trendCases = trendRows.map((row) => row.cases)
   const trendVariation = variationPercent(trendCases)
+  const hasDeaths = trendRows.some((row) => row.deaths > 0)
   const totalPeriods = trendRows.length
   const averageCases = safeAverage(trendCases)
   const peakEntry = trendRows.reduce<TrendRow | null>(
@@ -118,6 +82,25 @@ export default function SeriesPage() {
     null
   )
   const latestEntry = trendRows[trendRows.length - 1] ?? null
+  const previousEntry = trendRows[trendRows.length - 2] ?? null
+  const latestDelta =
+    latestEntry && previousEntry && previousEntry.cases > 0
+      ? ((latestEntry.cases - previousEntry.cases) / previousEntry.cases) * 100
+      : null
+  const latestDeltaLabel = latestDelta === null ? 'Sem dados' : formatSignedPercent(latestDelta)
+  const latestDeltaTone =
+    latestDelta === null
+      ? styles.trendNeutral
+      : latestDelta >= 0
+        ? styles.trendUp
+        : styles.trendDown
+
+  const handleDatasetChange = (id: string) => {
+    setActiveDataset(id)
+    const name = datasets.find((d) => d.id === id)?.name ?? ''
+    setToast(name)
+    setTimeout(() => setToast(null), 2500)
+  }
 
   if (isLoading) {
     return (
@@ -132,7 +115,7 @@ export default function SeriesPage() {
     )
   }
 
-  if (!selectedDataset || !profile) {
+  if (!activeDataset || !profile) {
     return (
       <div className={styles.page}>
         <header className={styles.header}>
@@ -143,7 +126,6 @@ export default function SeriesPage() {
             </p>
           </div>
         </header>
-
         <section className={styles.emptyState}>
           <p className={styles.emptyStateText}>
             Importe um dataset SINAN para acompanhar a evolução temporal dos casos.
@@ -194,12 +176,8 @@ export default function SeriesPage() {
           </label>
           <select
             id="series-dataset-select"
-            value={selectedDatasetId}
-            onChange={(event) => {
-              const nextId = event.target.value
-              setSelectedDatasetId(nextId)
-              setActiveChartDatasetId(nextId)
-            }}
+            value={activeDataset.id}
+            onChange={(event) => handleDatasetChange(event.target.value)}
             className={styles.select}
           >
             {datasets.map((dataset) => (
@@ -212,8 +190,8 @@ export default function SeriesPage() {
 
         <div className={styles.datasetMeta}>
           <span className={styles.metaLabel}>Arquivo</span>
-          <strong className={styles.metaValue}>{selectedDataset.name}</strong>
-          <span className={styles.metaHint}>{selectedDataset.sizeLabel}</span>
+          <strong className={styles.metaValue}>{activeDataset.name}</strong>
+          <span className={styles.metaHint}>{activeDataset.sizeLabel}</span>
         </div>
       </section>
 
@@ -240,6 +218,12 @@ export default function SeriesPage() {
               : 'Sem dados'}
           </strong>
         </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Variação última</span>
+          <strong className={`${styles.summaryValue} ${latestDeltaTone}`}>
+            {latestDeltaLabel}
+          </strong>
+        </article>
       </section>
 
       <section className={styles.card} aria-label="Análise temporal">
@@ -264,18 +248,32 @@ export default function SeriesPage() {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={12} />
                 <YAxis tickLine={false} axisLine={false} width={44} />
                 <Tooltip
+                  labelFormatter={(label) => `Período: ${label}`}
                   formatter={(value, name) => {
-                    const label = name === 'cases' ? 'Casos' : 'Média móvel'
-                    return typeof value === 'number'
-                      ? [formatDecimal(value), label]
-                      : [String(value), label]
+                    if (name === 'cases') return [formatInteger(value as number), 'Casos']
+                    if (name === 'movingAverage')
+                      return [formatDecimal(value as number), 'Média móvel']
+                    if (name === 'deaths') return [formatInteger(value as number), 'Óbitos']
+                    return [String(value), name]
+                  }}
+                />
+                <ReferenceLine
+                  y={Math.round(averageCases)}
+                  stroke="var(--color-text-secondary)"
+                  strokeDasharray="6 3"
+                  strokeOpacity={0.6}
+                  label={{
+                    value: 'Média',
+                    position: 'insideTopRight',
+                    fontSize: 11,
+                    fill: 'var(--color-text-secondary)',
                   }}
                 />
                 <Bar
                   dataKey="cases"
                   fill="var(--color-primary, #ff2d55)"
                   radius={[8, 8, 0, 0]}
-                  barSize={18}
+                  maxBarSize={28}
                 />
                 <Line
                   type="monotone"
@@ -284,6 +282,16 @@ export default function SeriesPage() {
                   strokeWidth={2.5}
                   dot={false}
                 />
+                {hasDeaths && (
+                  <Line
+                    type="monotone"
+                    dataKey="deaths"
+                    stroke="var(--color-danger, #ff3b30)"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={false}
+                  />
+                )}
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
@@ -299,11 +307,21 @@ export default function SeriesPage() {
             </strong>
           </div>
           <div>
-            <span className={styles.summaryLabel}>Variação %</span>
-            <strong className={styles.summaryValue}>{formatPercent(trendVariation)}</strong>
+            <span className={styles.summaryLabel}>Tendência</span>
+            <strong
+              className={`${styles.summaryValue} ${trendVariation > 0 ? styles.trendUp : trendVariation < 0 ? styles.trendDown : ''}`}
+            >
+              {formatSignedPercent(trendVariation)}
+            </strong>
           </div>
         </div>
       </section>
+
+      {toast && (
+        <div className={styles.toast} role="status">
+          Dataset ativo: <strong>{toast}</strong>
+        </div>
+      )}
     </div>
   )
 }

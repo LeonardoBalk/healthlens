@@ -20,6 +20,7 @@ import {
   type SinanFieldMapping,
   type SinanPreview,
 } from '@/utils/chartDatasets'
+import { useDatasets } from '@/contexts/DatasetContext'
 import styles from './DatasetUploadPage.module.scss'
 
 const ACCEPTED_EXTENSIONS = ['.csv', '.json', '.xlsx', '.dbc'] as const
@@ -80,10 +81,12 @@ const groupSinanFields = (fields: SinanFieldDefinition[]) =>
 
 export default function DatasetUploadPage() {
   const navigate = useNavigate()
+  const { refresh } = useDatasets()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const dragCounterRef = useRef(0)
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [datasetLabel, setDatasetLabel] = useState('')
   const [preview, setPreview] = useState<SinanPreview | null>(null)
   const [fieldMapping, setFieldMapping] = useState<SinanFieldMapping>({})
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
@@ -162,6 +165,7 @@ export default function DatasetUploadPage() {
     }
 
     setSelectedFile(file)
+    setDatasetLabel(file.name.replace(/\.[^.]+$/, ''))
   }
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -224,6 +228,7 @@ export default function DatasetUploadPage() {
     formData.append('file', selectedFile)
     formData.append('profile', JSON.stringify(datasetRecord.profile))
     formData.append('mapping', JSON.stringify(fieldMapping))
+    formData.append('name', datasetLabel.trim() || selectedFile.name)
 
     try {
       setIsSubmitting(true)
@@ -262,6 +267,7 @@ export default function DatasetUploadPage() {
         typeof payloadDatasetId === 'string' ? payloadDatasetId : datasetRecord.id
 
       setActiveChartDatasetId(createdDatasetId)
+      await refresh()
       void navigate('/datasets/charts')
     } catch {
       setToast({
@@ -292,8 +298,7 @@ export default function DatasetUploadPage() {
       <header className={styles.headingBlock}>
         <h1 className="gradient-text">Upload de Dataset Epidemiológico</h1>
         <p className={styles.subtitle}>
-          Selecione seu arquivo de dados de doenças virais contagiosas para iniciar a análise
-          automatica do HealthLens.
+          Selecione seu arquivo do SINAN para iniciar a análise no HealthLens.
         </p>
       </header>
 
@@ -357,6 +362,23 @@ export default function DatasetUploadPage() {
               </p>
             </div>
           </article>
+        )}
+
+        {selectedFile && (
+          <div className={styles.labelField}>
+            <label className={styles.labelFieldLabel} htmlFor="dataset-label">
+              Nome do dataset
+            </label>
+            <input
+              id="dataset-label"
+              type="text"
+              className={styles.labelFieldInput}
+              value={datasetLabel}
+              onChange={(event) => setDatasetLabel(event.target.value)}
+              placeholder={selectedFile.name}
+              maxLength={120}
+            />
+          </div>
         )}
 
         {selectedFile && (
@@ -488,7 +510,7 @@ export default function DatasetUploadPage() {
             }}
           >
             {isSubmitting && <LoaderCircle className={styles.loadingIcon} size={18} />}
-            <span>{isSubmitting ? 'Enviando arquivo...' : 'Importar Dados Virais'}</span>
+            <span>{isSubmitting ? 'Enviando arquivo...' : 'Importar Dataset'}</span>
           </Button>
         </div>
       </section>

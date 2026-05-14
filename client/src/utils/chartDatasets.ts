@@ -936,8 +936,8 @@ const calculateStatistics = (values: number[]): MetricStatistics => {
   const maximo = sorted[n - 1]
   const variance = orderedValues.reduce((sumValue, v) => sumValue + Math.pow(v - media, 2), 0) / n
   const desvio_padrao = Math.sqrt(variance)
-  const p25 = sorted[Math.floor(n * 0.25)] ?? minimo
-  const p75 = sorted[Math.floor(n * 0.75)] ?? maximo
+  const p25 = percentile(sorted, 0.25)
+  const p75 = percentile(sorted, 0.75)
   const variacao_percentual =
     minimo !== 0 ? ((maximo - minimo) / Math.abs(minimo)) * 100 : minimo === maximo ? 0 : 100
   const media_movel = calculateMovingAverage(orderedValues)
@@ -2050,9 +2050,12 @@ export const deleteChartDataset = async (datasetId: string): Promise<boolean> =>
   }
 }
 
+export const ACTIVE_DATASET_CHANGED_EVENT = 'healthlens:dataset-changed'
+
 export const setActiveChartDatasetId = (datasetId: string) => {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(ACTIVE_DATASET_KEY, datasetId)
+  window.dispatchEvent(new CustomEvent(ACTIVE_DATASET_CHANGED_EVENT, { detail: datasetId }))
 }
 
 export const getActiveChartDatasetId = () => {
@@ -2234,4 +2237,83 @@ export const exportDataset = (dataset: ChartDatasetRecord, format: ExportFormat 
   } else {
     exportDatasetAsCsv(dataset)
   }
+}
+
+// ─── Chat utilities ───────────────────────────────────────────────────────────
+
+type ChatSummary = {
+  rowCount: number
+  columnCount: number
+  primaryMetric: string
+  secondaryMetric: string | null
+  tertiaryMetric: string | null
+  hasTimeDimension: boolean
+  groupingDimension: string
+  trendData: Array<{ group: string; cases: number; secondary: number | null }>
+  segmentData: SegmentSharePoint[]
+  histogramData: HistogramPoint[]
+  distributionData: DistributionPoint[]
+  metrics: Record<string, Omit<MetricStatistics, 'valores'>>
+}
+
+const buildChatSummary = (profile: ChartDatasetProfile): ChatSummary => {
+  const metrics = Object.fromEntries(
+    Object.entries(profile.metrics).map(([key, stats]) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { valores, ...rest } = stats
+      return [key, rest]
+    })
+  )
+
+  return {
+    rowCount: profile.rowCount,
+    columnCount: profile.columnCount,
+    primaryMetric: profile.primaryMetric,
+    secondaryMetric: profile.secondaryMetric,
+    tertiaryMetric: profile.tertiaryMetric,
+    hasTimeDimension: profile.hasTimeDimension,
+    groupingDimension: profile.groupingDimension,
+    trendData: profile.trendData.map((entry) => ({
+      group: entry.group,
+      cases: entry.sampleSize,
+      secondary: entry.secondary ?? null,
+    })),
+    segmentData: profile.segmentData,
+    histogramData: profile.histogramData,
+    distributionData: profile.distributionData,
+    metrics,
+  }
+}
+
+export const askDatasetChat = async (
+  question: string,
+  dataset: ChartDatasetRecord,
+  history: Array<{ role: 'user' | 'assistant'; content: string }> = []
+): Promise<string> => {
+  const summary = buildChatSummary(dataset.profile)
+  const headers = await buildAuthHeaders()
+  const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    body: JSON.stringify({
+      question,
+      summary,
+      datasetName: dataset.name,
+      history,
+    }),
+  })
+
+  const payload = (await response.json().catch(() => null)) as {
+    answer?: string
+    message?: string
+  } | null
+
+  if (!response.ok) {
+    throw new Error(payload?.message ?? 'Falha ao consultar o assistente.')
+  }
+
+  return payload?.answer ?? 'Sem resposta do assistente.'
 }

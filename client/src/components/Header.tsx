@@ -1,6 +1,7 @@
 import { ChevronRight, Menu, Moon, Sun } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
+import { useDatasets } from '../contexts/DatasetContext'
 
 const routeLabels: Record<string, string> = {
   '/': 'Painel Epidemiológico',
@@ -26,6 +27,7 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
+  const { activeDataset } = useDatasets()
 
   const fallbackLabel =
     location.pathname
@@ -47,6 +49,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <span className="header__breadcrumb-root">HealthLens</span>
           <ChevronRight size={14} className="header__breadcrumb-sep" />
           <span className="header__breadcrumb-current">{currentLabel}</span>
+          {activeDataset && <span className="header__dataset-badge">{activeDataset.name}</span>}
         </nav>
       </div>
 

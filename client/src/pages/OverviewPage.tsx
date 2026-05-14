@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Database, Download } from 'lucide-react'
 import { Button } from '@/components/ui/Button/Button'
-import { fetchChartDatasets, type ChartDatasetRecord } from '@/utils/chartDatasets'
+import { useDatasets } from '@/contexts/DatasetContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import datasetStyles from './DatasetsPage/DatasetsPage.module.scss'
+import styles from './OverviewPage.module.scss'
+
+const INTEGER_FORMATTER = new Intl.NumberFormat('pt-BR')
+const formatInteger = (value: number) => INTEGER_FORMATTER.format(Math.round(value))
 
 const formatDate = (isoDate: string) => {
   const parsed = new Date(isoDate)
@@ -15,79 +19,63 @@ const formatDate = (isoDate: string) => {
 export default function OverviewPage() {
   const navigate = useNavigate()
   const { settings } = useSettings()
-  const [datasets, setDatasets] = useState<ChartDatasetRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { datasets, activeDataset, isLoading, setActiveDataset } = useDatasets()
 
-  useEffect(() => {
-    let cancelled = false
-
-    const loadDatasets = async () => {
-      setIsLoading(true)
-      const loadedDatasets = await fetchChartDatasets()
-      if (!cancelled) {
-        setDatasets(loadedDatasets.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)))
-        setIsLoading(false)
-      }
-    }
-
-    void loadDatasets()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const displayedDatasets = (() => {
+  const displayedDatasets = useMemo(() => {
     if (settings.recentDatasetsCount === 'all') return datasets
     const limit = parseInt(settings.recentDatasetsCount, 10)
     return isNaN(limit) ? datasets.slice(0, 5) : datasets.slice(0, limit)
-  })()
+  }, [datasets, settings.recentDatasetsCount])
+
+  const activeDatasetLabel = activeDataset?.name ?? 'Sem dataset ativo'
+  const lastUploadLabel = activeDataset ? formatDate(activeDataset.uploadedAt) : 'Sem dados'
+  const activeRowsLabel = activeDataset
+    ? formatInteger(activeDataset.profile?.rowCount ?? 0)
+    : 'Sem dados'
+  const totalDatasetsLabel = formatInteger(datasets.length)
+
+  const handleDatasetClick = (datasetId: string) => {
+    setActiveDataset(datasetId)
+    void navigate('/datasets/charts')
+  }
 
   return (
-    <div
-      className="page"
-      style={{
-        padding: 'var(--space-6)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-6)',
-      }}
-    >
-      <header>
-        <h1 className="gradient-text" style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 600 }}>
-          Painel Epidemiológico
-        </h1>
-        <p className="text-muted" style={{ marginTop: 'var(--space-2)' }}>
-          Visão geral das análises de doenças virais contagiosas e status dos seus datasets do
-          SINAN.
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <h1 className={`gradient-text ${styles.title}`}>Painel Epidemiológico</h1>
+        <p className={styles.subtitle}>
+          Visão geral dos seus datasets do SINAN e das análises epidemiológicas.
         </p>
       </header>
 
-      <section>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 'var(--space-4)',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: 'var(--font-size-lg)',
-              fontWeight: 600,
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            Datasets Recentes
-          </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void navigate('/datasets/list')
-            }}
-          >
+      <section className={styles.summaryGrid} aria-label="Resumo do painel">
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Datasets</span>
+          <strong className={styles.summaryValue}>{totalDatasetsLabel}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Dataset ativo</span>
+          <strong className={styles.summaryValue}>{activeDatasetLabel}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Último upload</span>
+          <strong className={styles.summaryValue}>{lastUploadLabel}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Registros ativos</span>
+          <strong className={styles.summaryValue}>{activeRowsLabel}</strong>
+        </article>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <h2 className={styles.sectionTitle}>Datasets Recentes</h2>
+            <p className={styles.sectionHint}>
+              Clique em um dataset para ativá-lo e ir para os gráficos.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => void navigate('/datasets/list')}>
             Ver todos
             <ArrowRight size={16} style={{ marginLeft: 'var(--space-2)' }} />
           </Button>
@@ -111,16 +99,12 @@ export default function OverviewPage() {
             {displayedDatasets.map((dataset) => (
               <div
                 key={dataset.id}
-                className={datasetStyles.datasetCard}
-                onClick={() => {
-                  void navigate('/datasets/list')
-                }}
+                className={`${datasetStyles.datasetCard} ${dataset.id === activeDataset?.id ? datasetStyles.datasetCardActive : ''}`}
+                onClick={() => handleDatasetClick(dataset.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    void navigate('/datasets/list')
-                  }
+                  if (event.key === 'Enter' || event.key === ' ') handleDatasetClick(dataset.id)
                 }}
               >
                 <div className={datasetStyles.info}>
@@ -130,31 +114,23 @@ export default function OverviewPage() {
                   <div className={datasetStyles.details}>
                     <span className={datasetStyles.name}>{dataset.name}</span>
                     <span className={datasetStyles.meta}>
-                      Adicionado em {formatDate(dataset.uploadedAt)} - {dataset.sizeLabel}
+                      Adicionado em {formatDate(dataset.uploadedAt)} — {dataset.sizeLabel}
                     </span>
                   </div>
                 </div>
+                <ArrowRight size={16} style={{ flexShrink: 0, opacity: 0.4 }} />
               </div>
             ))}
           </div>
         )}
       </section>
 
-      <section style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-        <Button
-          onClick={() => {
-            void navigate('/datasets/new')
-          }}
-        >
+      <section className={styles.actions} aria-label="Ações rápidas">
+        <Button onClick={() => void navigate('/datasets/new')}>
           <Download size={18} />
           <span>Importar Novo Dataset</span>
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            void navigate('/datasets/charts')
-          }}
-        >
+        <Button variant="outline" onClick={() => void navigate('/datasets/charts')}>
           Ir para os Gráficos
           <ArrowRight size={18} style={{ marginLeft: 'var(--space-2)' }} />
         </Button>

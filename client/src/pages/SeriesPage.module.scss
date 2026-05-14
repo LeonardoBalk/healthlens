@@ -181,6 +181,18 @@
   font-size: $font-size-lg;
 }
 
+.trendUp {
+  color: var(--color-success, #30d158);
+}
+
+.trendDown {
+  color: var(--color-danger, #ff3b30);
+}
+
+.trendNeutral {
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
 .emptyState {
   padding: $space-8;
   display: flex;

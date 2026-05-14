@@ -269,16 +269,15 @@ export default function ChartsPage() {
           <div className={styles.titleBlock}>
             <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
             <p className={styles.subtitle}>
-              Nenhum dataset disponível. Faça upload de dados epidemiológicos para gerar a dashboard
-              de vigilância.
+              Nenhum dataset disponível. Faça upload de um arquivo SINAN para gerar a dashboard.
             </p>
           </div>
         </header>
 
         <section className={styles.emptyState}>
           <p className={styles.emptyStateText}>
-            A dashboard trabalha com indicadores epidemiológicos: KPIs de notificações e óbitos,
-            curvas temporais, distribuição demográfica e resumo de indicadores virais.
+            A dashboard trabalha com indicadores do SINAN: notificações, óbitos, curvas temporais e
+            distribuição demográfica.
           </p>
           <Button type="button" size="lg" onClick={() => void navigate('/datasets/new')}>
             <Download size={18} />
@@ -294,9 +293,7 @@ export default function ChartsPage() {
       <header className={styles.header}>
         <div className={styles.titleBlock}>
           <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
-          <p className={styles.subtitle}>
-            Dashboard de vigilância epidemiológica de doenças virais contagiosas.
-          </p>
+          <p className={styles.subtitle}>Dashboard de análise epidemiológica de dados do SINAN.</p>
         </div>
 
         <div className={styles.headerActions}>
@@ -522,7 +519,7 @@ export default function ChartsPage() {
               Resumo Epidemiológico
             </h2>
             <p className={styles.cardDescription}>
-              Síntese dos indicadores de vigilância viral do dataset ativo.
+              Síntese dos indicadores epidemiológicos do dataset ativo.
             </p>
           </div>
         </div>

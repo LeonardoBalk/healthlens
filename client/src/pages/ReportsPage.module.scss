@@ -1,0 +1,436 @@
+@use "@styles/variables" as *;
+
+// ── Página (tela) ─────────────────────────────────────────────────────────────
+
+.page {
+  width: min(100%, 78rem);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  max-width: 66ch;
+}
+
+.title {
+  font-size: clamp(1.75rem, 3vw, 2.3rem);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+.controlBar,
+.card,
+.summaryCard,
+.emptyState {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-2xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+}
+
+.controlBar {
+  padding: $space-4 $space-5;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: $space-4;
+  flex-wrap: wrap;
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 18rem;
+  flex: 1;
+}
+
+.controlLabel,
+.summaryLabel {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.select {
+  min-height: 2.7rem;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border-strong, $color-border-strong);
+  background: var(--color-surface-2, $color-surface-2);
+  color: var(--color-text-primary, $color-text-primary);
+  padding: 0 $space-4;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: $space-4;
+}
+
+.summaryCard {
+  padding: $space-4;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.summaryValue {
+  color: var(--color-text-primary, $color-text-primary);
+  display: block;
+  font-size: $font-size-xl;
+  margin-top: $space-1;
+}
+
+.summaryDanger {
+  color: var(--color-danger, $color-danger);
+}
+
+.card {
+  padding: $space-4 $space-5;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-3;
+  margin-bottom: $space-4;
+}
+
+.cardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--color-text-primary, $color-text-primary);
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+}
+
+.cardDescription {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-sm;
+  margin-top: $space-1;
+}
+
+.badge {
+  border-radius: $radius-full;
+  border: 1px solid var(--color-border-strong, $color-border-strong);
+  background: var(--color-surface-2, $color-surface-2);
+  color: var(--color-text-secondary, $color-text-secondary);
+  padding: $space-1 $space-3;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  white-space: nowrap;
+}
+
+.chartBox {
+  height: clamp(14rem, 32vw, 18rem);
+  min-height: 14rem;
+}
+
+.placeholder {
+  min-height: 14rem;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-secondary, $color-text-secondary);
+  border-radius: $radius-xl;
+  background: color-mix(in srgb, var(--color-surface-2, $color-surface-2) 70%, transparent);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-size-sm;
+}
+
+.table th,
+.table td {
+  padding: $space-3 $space-4;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border, $color-border);
+}
+
+.table th {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table td {
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.segmentBar {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.segmentBarTrack {
+  flex: 1;
+  height: 6px;
+  border-radius: $radius-full;
+  background: var(--color-border, $color-border);
+  overflow: hidden;
+}
+
+.segmentBarFill {
+  height: 100%;
+  border-radius: $radius-full;
+  background: var(--color-primary, $color-primary);
+  transition: width 0.4s ease;
+}
+
+.segmentBarLabel {
+  min-width: 3.5rem;
+  text-align: right;
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-xs;
+}
+
+.exportActions {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  flex-wrap: wrap;
+}
+
+.emptyState {
+  padding: $space-8;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-4;
+}
+
+.emptyStateText {
+  color: var(--color-text-secondary, $color-text-secondary);
+  max-width: 56ch;
+}
+
+// ── Cabeçalho de impressão (oculto na tela) ──────────────────────────────────
+
+.printHeader {
+  display: none;
+}
+
+// ── Responsivo (tela) ─────────────────────────────────────────────────────────
+
+@media (max-width: 48rem) {
+  .headerActions {
+    width: 100%;
+  }
+
+  .controlGroup {
+    min-width: 100%;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+// ── Print ─────────────────────────────────────────────────────────────────────
+
+@media print {
+  // ── Cabeçalho do documento ────────────────────────────────────────────────
+  .printHeader {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid #111;
+  }
+
+  .printHeaderBrand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .printLogo {
+    width: 26px;
+    height: 22px;
+    object-fit: contain;
+  }
+
+  .printBrandName {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #000;
+    letter-spacing: -0.02em;
+  }
+
+  .printHeaderMeta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    font-size: 8pt;
+    color: #444;
+  }
+
+  // ── Layout da página ───────────────────────────────────────────────────────
+  .page {
+    gap: 0.75rem;
+  }
+
+  .title {
+    font-size: 14pt !important;
+    color: #111 !important;
+  }
+
+  // ── Cartões de resumo ──────────────────────────────────────────────────────
+  .summaryGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.375rem;
+  }
+
+  .summaryCard {
+    border-radius: 3px !important;
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+    padding: 0.4rem 0.625rem;
+  }
+
+  .summaryLabel {
+    font-size: 7pt;
+    color: #666;
+  }
+
+  .summaryValue {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #111 !important;
+    margin-top: 1px;
+  }
+
+  .summaryDanger {
+    color: #c00 !important;
+  }
+
+  // ── Seções de conteúdo ─────────────────────────────────────────────────────
+  .card {
+    border-radius: 3px !important;
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+    padding: 0.5rem 0.75rem;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .cardHeader {
+    margin-bottom: 0.375rem;
+  }
+
+  .cardTitle {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #111 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .cardDescription {
+    font-size: 7.5pt;
+    color: #666;
+  }
+
+  .badge {
+    font-size: 7pt;
+    border: 1px solid #bbb !important;
+    background: #f5f5f5 !important;
+    color: #555 !important;
+    padding: 1px 6px;
+  }
+
+  // ── Gráfico ────────────────────────────────────────────────────────────────
+  .chartBox {
+    height: 170px !important;
+    min-height: 170px !important;
+
+    > div {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    svg {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
+
+  // ── Tabelas ────────────────────────────────────────────────────────────────
+  .table {
+    font-size: 8pt;
+  }
+
+  .table th {
+    font-size: 7pt;
+    color: #444 !important;
+    border-bottom-color: #aaa !important;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .table td {
+    color: #111 !important;
+    border-bottom-color: #e0e0e0 !important;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .table tbody tr:nth-child(even) td {
+    background: #f7f7f7 !important;
+  }
+
+  // ── Barra de proporção ─────────────────────────────────────────────────────
+  .segmentBarTrack {
+    background: #e0e0e0 !important;
+  }
+
+  .segmentBarFill {
+    background: #c8102e !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .segmentBarLabel {
+    font-size: 7.5pt;
+    color: #555 !important;
+  }
+}

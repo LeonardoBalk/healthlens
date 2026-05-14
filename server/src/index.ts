@@ -8,13 +8,23 @@ import type { Database, Json } from './lib/database.types'
 import { readDbcRecords } from '@precisa-saude/datasus-dbc'
 import { supabase } from './lib/supabase'
 
-dotenv.config()
+const envPaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '..', '.env'),
+  path.resolve(process.cwd(), 'server', '.env'),
+]
+
+envPaths.forEach((envPath) => {
+  dotenv.config({ path: envPath, override: true })
+})
 
 const app = express()
 const PORT = process.env.PORT ?? 3003
 const MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024
 const ALLOWED_EXTENSIONS = new Set(['.csv', '.json', '.xlsx', '.dbc'])
 const MAX_PREVIEW_ROWS = Number.MAX_SAFE_INTEGER
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-1.5-flash'
 
 type RowRecord = Record<string, unknown>
 type AuthenticatedRequest = Request & { user?: User }
@@ -30,6 +40,98 @@ type StatsPayload = {
   mimeType: string
   storagePath: string
   storageBucket: string
+}
+
+type ChatHistoryMessage = { role: 'user' | 'assistant'; content: string }
+
+type ChatRequestBody = {
+  question?: unknown
+  summary?: unknown
+  datasetName?: unknown
+  history?: unknown
+}
+
+const SINAN_AGRAVO_NAMES: Record<string, string> = {
+  AIDA: 'AIDS/HIV',
+  AIDS: 'AIDS/HIV',
+  DENG: 'Dengue',
+  CHIK: 'Chikungunya',
+  ZIKA: 'Zika',
+  TUBE: 'Tuberculose',
+  SIFI: 'Sífilis',
+  LEIV: 'Leishmaniose Visceral',
+  LEIS: 'Leishmaniose Tegumentar',
+  HEPA: 'Hepatites Virais',
+  MALE: 'Malária',
+  HANT: 'Hantavirose',
+  FEMA: 'Febre Maculosa',
+  FEAM: 'Febre Amarela',
+  TETA: 'Tétano Acidental',
+  COLE: 'Cólera',
+  BOTU: 'Botulismo',
+  RIBE: 'Raiva Humana',
+  ENCE: 'Encefalite Viral',
+  ANTR: 'Antraz',
+  LEPT: 'Leptospirose',
+  MENI: 'Meningite',
+  ROTA: 'Rotavirose',
+}
+
+const detectSinanAgravo = (filename: string): string | null => {
+  const code = filename
+    .replace(/\.[^.]+$/, '')
+    .slice(0, 4)
+    .toUpperCase()
+  return SINAN_AGRAVO_NAMES[code] ?? null
+}
+
+const buildSystemInstruction = (summary: Record<string, unknown>, datasetName: string) => {
+  const agravo = detectSinanAgravo(datasetName)
+  const datasetDescription = agravo
+    ? `${datasetName} — dados de ${agravo} (SINAN)`
+    : `${datasetName} (SINAN)`
+
+  return [
+    'Voce e um assistente de dados epidemiologicos especializado no SINAN.',
+    'Responda perguntas sobre os dados com base no resumo agregado fornecido.',
+    'Para perguntas fora do escopo dos dados, use o contexto da conversa quando disponivel.',
+    'Nao invente numeros ou estatisticas que nao estejam no resumo.',
+    'Se realmente nao houver informacao suficiente, diga isso claramente.',
+    'Responda em pt-BR.',
+    'Formate a resposta em texto simples, com quebras de linha.',
+    'Use bullets com o simbolo "•" quando listar itens.',
+    'Nao use markdown (sem **, sem listas com * ou -).',
+    '',
+    `Dataset: ${datasetDescription}`,
+    'Resumo agregado (JSON):',
+    JSON.stringify(summary, null, 2),
+  ].join('\n')
+}
+
+const buildGeminiContents = (question: string, history: ChatHistoryMessage[]) => {
+  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = history.map((msg) => ({
+    role: msg.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: msg.content }],
+  }))
+  contents.push({ role: 'user', parts: [{ text: question }] })
+  return contents
+}
+
+const extractGeminiAnswer = (payload: unknown): string | null => {
+  if (!payload || typeof payload !== 'object') return null
+  const candidates = (payload as { candidates?: unknown }).candidates
+  if (!Array.isArray(candidates) || !candidates.length) return null
+  const content = (candidates[0] as { content?: unknown }).content
+  if (!content || typeof content !== 'object') return null
+  const parts = (content as { parts?: unknown }).parts
+  if (!Array.isArray(parts) || !parts.length) return null
+  const text = parts
+    .map((part) =>
+      typeof (part as { text?: unknown }).text === 'string' ? (part as { text?: string }).text : ''
+    )
+    .join('')
+    .trim()
+  return text || null
 }
 
 const parseJsonObject = (value: string): Record<string, unknown> | null => {
@@ -146,6 +248,75 @@ app.get('/api/datasets', async (req: Request, res: Response) => {
   }
 })
 
+app.post('/api/chat', async (req: Request, res: Response) => {
+  const userId = (req as AuthenticatedRequest).user?.id
+  if (!userId) {
+    return res.status(401).json({ message: 'Autenticacao necessaria.' })
+  }
+
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ message: 'GEMINI_API_KEY nao configurada.' })
+  }
+
+  const body = (req.body ?? {}) as ChatRequestBody
+  const question = typeof body.question === 'string' ? body.question.trim() : ''
+  const summary = body.summary
+  const datasetName = typeof body.datasetName === 'string' ? body.datasetName : 'Dataset ativo'
+
+  if (!question) {
+    return res.status(400).json({ message: 'Pergunta obrigatoria.' })
+  }
+
+  if (!summary || typeof summary !== 'object') {
+    return res.status(400).json({ message: 'Resumo agregado obrigatorio.' })
+  }
+
+  const rawHistory = Array.isArray(body.history) ? body.history : []
+  const history: ChatHistoryMessage[] = rawHistory
+    .filter((msg): msg is Record<string, unknown> => typeof msg === 'object' && msg !== null)
+    .map((msg) => ({
+      role: msg['role'] === 'user' || msg['role'] === 'assistant' ? msg['role'] : 'user',
+      content: typeof msg['content'] === 'string' ? msg['content'] : '',
+    }))
+    .filter((msg) => msg.content.length > 0)
+    .slice(-16)
+
+  try {
+    const systemInstruction = buildSystemInstruction(
+      summary as Record<string, unknown>,
+      datasetName
+    )
+    const contents = buildGeminiContents(question, history)
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents,
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 1000,
+          },
+        }),
+      }
+    )
+
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      console.error('Gemini error:', payload)
+      return res.status(500).json({ message: 'Falha ao consultar o Gemini.' })
+    }
+
+    const answer = extractGeminiAnswer(payload)
+    return res.json({ answer: answer ?? 'Sem resposta do assistente.' })
+  } catch (err) {
+    console.error('Chat handler error:', err)
+    return res.status(500).json({ message: 'Erro ao gerar resposta.' })
+  }
+})
+
 app.post('/api/datasets/upload', upload.single('file'), async (req: Request, res: Response) => {
   const uploadedFile = req.file
   const userId = (req as AuthenticatedRequest).user?.id
@@ -167,6 +338,10 @@ app.post('/api/datasets/upload', upload.single('file'), async (req: Request, res
   const datasetId = `ds_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   const storagePath = `uploads/${datasetId}${extension}`
   const body = (req.body ?? {}) as Record<string, unknown>
+  const customName =
+    typeof body['name'] === 'string' && body['name'].trim()
+      ? body['name'].trim()
+      : uploadedFile.originalname
   const profilePayload: string | null = typeof body['profile'] === 'string' ? body['profile'] : null
   const mappingPayload: string | null = typeof body['mapping'] === 'string' ? body['mapping'] : null
   let statsPayload: StatsPayload | null = null
@@ -244,7 +419,7 @@ app.post('/api/datasets/upload', upload.single('file'), async (req: Request, res
     // Insert dataset metadata into DB with user_id
     const insertPayload: DatasetInsert = {
       user_id: userId,
-      name: uploadedFile.originalname,
+      name: customName,
       description: null,
       stats_json: (statsPayload ?? null) as Json | null,
       row_count:

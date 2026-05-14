@@ -1,0 +1,78 @@
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.8cm 2cm;
+  }
+
+  // ─── Força tema claro + zera sombras nas variáveis ───────────────────────────
+  :root,
+  .dark {
+    --color-background: #ffffff;
+    --color-surface: #ffffff;
+    --color-surface-2: #f8f8f8;
+    --color-border: #cccccc;
+    --color-border-strong: #aaaaaa;
+    --color-text-primary: #111111;
+    --color-text-secondary: #555555;
+    --color-primary: #c8102e;
+    --color-danger: #c8102e;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  // ─── Remove sombras e transições globalmente ─────────────────────────────────
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: none !important;
+    animation: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  // ─── Corrige gradient-text (clip de fundo não imprime) ───────────────────────
+  .gradient-text,
+  .gradient-text-primary,
+  [class*="gradient"] {
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
+    -webkit-text-fill-color: #111111 !important;
+    color: #111111 !important;
+  }
+
+  // ─── Esconde chrome da UI ────────────────────────────────────────────────────
+  .sidebar,
+  .sidebar-backdrop,
+  .header,
+  [data-chat-widget],
+  [data-no-print] {
+    display: none !important;
+  }
+
+  // ─── Achata o layout ─────────────────────────────────────────────────────────
+  .layout {
+    display: block;
+  }
+
+  .layout__main {
+    width: 100%;
+  }
+
+  .layout__content {
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+}

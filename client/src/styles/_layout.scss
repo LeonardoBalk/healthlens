@@ -33,6 +33,11 @@ body {
     @include lg {
       padding: $space-8;
     }
+
+    // Extra bottom padding on mobile so FAB doesn't overlap last content
+    @media (max-width: $bp-md) {
+      padding-bottom: 5rem;
+    }
   }
 }
 
@@ -190,6 +195,25 @@ body {
     &-current {
       color: var(--color-text-primary, $color-text-primary);
       font-weight: 600;
+    }
+  }
+
+  &__dataset-badge {
+    display: none;
+    padding: $space-1 $space-3;
+    border-radius: $radius-full;
+    border: 1px solid var(--color-border-strong, $color-border-strong);
+    background: var(--color-surface-2, $color-surface-2);
+    color: var(--color-text-secondary, $color-text-secondary);
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    max-width: 20ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    @include lg {
+      display: inline-block;
     }
   }
 

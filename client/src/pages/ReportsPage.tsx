@@ -222,7 +222,8 @@ export default function ReportsPage() {
             </div>
             <span className={styles.badge}>{trendRows.length} períodos</span>
           </div>
-          <div className={styles.chartBox}>
+
+          <div className={styles.chartBox} data-no-print>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={trendRows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid stroke="var(--color-border-strong, #3f3f46)" strokeDasharray="3 3" />
@@ -253,6 +254,7 @@ export default function ReportsPage() {
                   fill="var(--color-primary, #ff2d55)"
                   radius={[6, 6, 0, 0]}
                   maxBarSize={28}
+                  isAnimationActive={false}
                 />
                 {hasDeaths && (
                   <Line
@@ -262,10 +264,32 @@ export default function ReportsPage() {
                     strokeWidth={2}
                     strokeDasharray="4 4"
                     dot={false}
+                    isAnimationActive={false}
                   />
                 )}
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+
+          <div className={`${styles.tableWrapper} ${styles.printOnly}`}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Período</th>
+                  <th>Casos</th>
+                  {hasDeaths && <th>Óbitos</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {trendRows.map((row) => (
+                  <tr key={row.label}>
+                    <td>{row.label}</td>
+                    <td>{formatInteger(row.cases)}</td>
+                    {hasDeaths && <td>{formatInteger(row.deaths)}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       )}

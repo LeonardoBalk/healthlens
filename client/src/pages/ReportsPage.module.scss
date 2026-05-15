@@ -249,6 +249,10 @@
   display: none;
 }
 
+.printOnly {
+  display: none !important;
+}
+
 // ── Responsivo (tela) ─────────────────────────────────────────────────────────
 
 @media (max-width: 48rem) {
@@ -275,7 +279,7 @@
     align-items: center;
     padding-bottom: 0.5rem;
     margin-bottom: 1.25rem;
-    border-bottom: 2px solid #111;
+    border-bottom: 2px solid var(--color-primary, #c8102e);
   }
 
   .printHeaderBrand {
@@ -293,7 +297,7 @@
   .printBrandName {
     font-size: 14pt;
     font-weight: 700;
-    color: #000;
+    color: var(--color-primary, #c8102e);
     letter-spacing: -0.02em;
   }
 
@@ -304,6 +308,10 @@
     gap: 1px;
     font-size: 8pt;
     color: #444;
+  }
+
+  .printOnly {
+    display: block !important;
   }
 
   // ── Layout da página ───────────────────────────────────────────────────────
@@ -382,18 +390,9 @@
 
   // ── Gráfico ────────────────────────────────────────────────────────────────
   .chartBox {
-    height: 170px !important;
-    min-height: 170px !important;
-
-    > div {
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    svg {
-      width: 100% !important;
-      height: 100% !important;
-    }
+    break-inside: avoid;
+    page-break-inside: avoid;
+    /* Remove fixação de altura no print para evitar overflow do Recharts */
   }
 
   // ── Tabelas ────────────────────────────────────────────────────────────────

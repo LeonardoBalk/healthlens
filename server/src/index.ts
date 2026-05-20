@@ -1,8 +1,11 @@
 import cors from 'cors'
 import dotenv from 'dotenv'
 import express, { type NextFunction, type Request, type Response } from 'express'
+import helmet from 'helmet'
+import { rateLimit } from 'express-rate-limit'
 import multer from 'multer'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import type { User } from '@supabase/supabase-js'
 import type { Database, Json } from './lib/database.types'
 import { readDbcRecords } from '@precisa-saude/datasus-dbc'
@@ -173,6 +176,16 @@ const upload = multer({
   },
 })
 
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
+
+const chatRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Muitas requisições. Tente novamente em instantes.' },
+})
+
 // Enable CORS for the frontend origin and allow credentials
 app.use(
   cors({
@@ -248,7 +261,7 @@ app.get('/api/datasets', async (req: Request, res: Response) => {
   }
 })
 
-app.post('/api/chat', async (req: Request, res: Response) => {
+app.post('/api/chat', chatRateLimit, async (req: Request, res: Response) => {
   const userId = (req as AuthenticatedRequest).user?.id
   if (!userId) {
     return res.status(401).json({ message: 'Autenticacao necessaria.' })
@@ -335,13 +348,12 @@ app.post('/api/datasets/upload', upload.single('file'), async (req: Request, res
   }
 
   const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'datasets'
-  const datasetId = `ds_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const datasetId = `ds_${randomUUID()}`
   const storagePath = `uploads/${datasetId}${extension}`
   const body = (req.body ?? {}) as Record<string, unknown>
+  const rawName = typeof body['name'] === 'string' ? body['name'].trim() : ''
   const customName =
-    typeof body['name'] === 'string' && body['name'].trim()
-      ? body['name'].trim()
-      : uploadedFile.originalname
+    rawName.length > 0 ? rawName.slice(0, 200) : uploadedFile.originalname.slice(0, 200)
   const profilePayload: string | null = typeof body['profile'] === 'string' ? body['profile'] : null
   const mappingPayload: string | null = typeof body['mapping'] === 'string' ? body['mapping'] : null
   let statsPayload: StatsPayload | null = null

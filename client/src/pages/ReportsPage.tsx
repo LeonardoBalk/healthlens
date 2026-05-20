@@ -53,18 +53,18 @@ export default function ReportsPage() {
     if (!profile) return 0
     const fromMetrics = profile.metrics.obito?.total
     if (typeof fromMetrics === 'number' && fromMetrics > 0) return Math.round(fromMetrics)
-    return trendRows.reduce((sum, row) => sum + row.deaths, 0)
-  }, [profile, trendRows])
+    // obito.values contains the raw 0/1 column; sum gives full-dataset death count
+    const fromValues = profile.metrics.obito?.valores
+    if (Array.isArray(fromValues) && fromValues.length > 0) {
+      return fromValues.reduce<number>((sum, v) => sum + (v === 1 ? 1 : 0), 0)
+    }
+    return 0
+  }, [profile])
 
   const mortalityRate = totalCases > 0 ? (totalDeaths / totalCases) * 100 : 0
   const hasDeaths = trendRows.some((row) => row.deaths > 0)
   const averageCases =
     trendRows.length > 0 ? trendRows.reduce((sum, row) => sum + row.cases, 0) / trendRows.length : 0
-
-  const maxSegmentCount = useMemo(
-    () => Math.max(1, ...(profile?.segmentData.map((s) => s.count) ?? [0])),
-    [profile]
-  )
 
   if (isLoading) {
     return (
@@ -324,7 +324,7 @@ export default function ReportsPage() {
                         <div className={styles.segmentBarTrack}>
                           <div
                             className={styles.segmentBarFill}
-                            style={{ width: `${(entry.count / maxSegmentCount) * 100}%` }}
+                            style={{ width: `${entry.ratio}%` }}
                           />
                         </div>
                       </div>

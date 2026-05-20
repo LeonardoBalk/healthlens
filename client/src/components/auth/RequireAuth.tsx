@@ -55,7 +55,7 @@ export default function RequireAuth() {
         }}
       >
         <LoaderCircle size={22} style={{ animation: 'spin 1s linear infinite' }} />
-        <span>Verificando sessao...</span>
+        <span>Verificando sessão...</span>
       </div>
     )
   }

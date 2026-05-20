@@ -260,6 +260,13 @@
   @include badge-neutral;
 }
 
+// ── Animações ─────────────────────────────────────────────────────────────────
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 // ── Acessibilidade ────────────────────────────────────────────────────────────
 .sr-only {
   position: absolute;

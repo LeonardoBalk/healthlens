@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { LandingPage } from './pages/LandingPage/LandingPage'
 import Layout from './components/Layout'
@@ -11,10 +12,27 @@ import DatasetsPage from './pages/DatasetsPage/DatasetsPage'
 import SettingsPage from './pages/SettingsPage/SettingsPage'
 import ProfilePage from './pages/ProfilePage/ProfilePage'
 import RequireAuth from './components/auth/RequireAuth'
+import { supabase } from './lib/supabase'
 import './App.scss'
 
 import { ThemeProvider } from './contexts/ThemeContext'
 import { SettingsProvider } from './contexts/SettingsContext'
+
+function RootRoute() {
+  const [checked, setChecked] = useState(!supabase)
+  const [authenticated, setAuthenticated] = useState(false)
+
+  useEffect(() => {
+    if (!supabase) return
+    void supabase.auth.getSession().then(({ data }) => {
+      setAuthenticated(!!data.session)
+      setChecked(true)
+    })
+  }, [])
+
+  if (!checked) return null
+  return authenticated ? <Navigate to="/datasets" replace /> : <LandingPage />
+}
 
 function App() {
   return (
@@ -22,7 +40,7 @@ function App() {
       <SettingsProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<RootRoute />} />
             <Route path="/home" element={<Navigate to="/" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route element={<RequireAuth />}>

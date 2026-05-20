@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarRange, Download, RefreshCcw } from 'lucide-react'
 import {
@@ -70,23 +70,47 @@ export default function SeriesPage() {
   const { datasets, activeDataset, isLoading, setActiveDataset } = useDatasets()
   const [toast, setToast] = useState<string | null>(null)
 
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(
+    () => () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    },
+    []
+  )
+
   const profile = activeDataset?.profile ?? null
   const trendRows = useMemo(() => (profile ? getTrendRows(profile) : []), [profile])
-  const trendCases = trendRows.map((row) => row.cases)
-  const trendVariation = variationPercent(trendCases)
-  const hasDeaths = trendRows.some((row) => row.deaths > 0)
-  const totalPeriods = trendRows.length
-  const averageCases = safeAverage(trendCases)
-  const peakEntry = trendRows.reduce<TrendRow | null>(
-    (current, entry) => (!current || entry.cases > current.cases ? entry : current),
-    null
-  )
-  const latestEntry = trendRows[trendRows.length - 1] ?? null
-  const previousEntry = trendRows[trendRows.length - 2] ?? null
-  const latestDelta =
-    latestEntry && previousEntry && previousEntry.cases > 0
-      ? ((latestEntry.cases - previousEntry.cases) / previousEntry.cases) * 100
-      : null
+
+  const {
+    trendVariation,
+    hasDeaths,
+    totalPeriods,
+    averageCases,
+    peakEntry,
+    latestEntry,
+    latestDelta,
+  } = useMemo(() => {
+    const cases = trendRows.map((row) => row.cases)
+    return {
+      trendVariation: variationPercent(cases),
+      hasDeaths: trendRows.some((row) => row.deaths > 0),
+      totalPeriods: trendRows.length,
+      averageCases: safeAverage(cases),
+      peakEntry: trendRows.reduce<TrendRow | null>(
+        (current, entry) => (!current || entry.cases > current.cases ? entry : current),
+        null
+      ),
+      latestEntry: trendRows[trendRows.length - 1] ?? null,
+      latestDelta: (() => {
+        const latest = trendRows[trendRows.length - 1] ?? null
+        const prev = trendRows[trendRows.length - 2] ?? null
+        if (!latest || !prev || prev.cases === 0) return null
+        return ((latest.cases - prev.cases) / prev.cases) * 100
+      })(),
+    }
+  }, [trendRows])
+
   const latestDeltaLabel = latestDelta === null ? 'Sem dados' : formatSignedPercent(latestDelta)
   const latestDeltaTone =
     latestDelta === null
@@ -96,10 +120,10 @@ export default function SeriesPage() {
         : styles.trendDown
 
   const handleDatasetChange = (id: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     setActiveDataset(id)
-    const name = datasets.find((d) => d.id === id)?.name ?? ''
-    setToast(name)
-    setTimeout(() => setToast(null), 2500)
+    setToast(datasets.find((d) => d.id === id)?.name ?? '')
+    toastTimerRef.current = setTimeout(() => setToast(null), 2500)
   }
 
   if (isLoading) {

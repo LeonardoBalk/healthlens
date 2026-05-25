@@ -25,10 +25,7 @@ export default function SettingsPage() {
     setToast({ message: 'Configuração salva.', type: 'success' })
   }
 
-  const handleSelect = <K extends 'previewRowLimit' | 'recentDatasetsCount'>(
-    key: K,
-    value: string
-  ) => {
+  const handleSelect = <K extends 'recentDatasetsCount'>(key: K, value: string) => {
     updateSetting(key, value as (typeof settings)[K])
     setToast({ message: 'Configuração salva.', type: 'success' })
   }
@@ -54,7 +51,7 @@ export default function SettingsPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Configurações</h1>
+        <h1 className={`gradient-text ${styles.title}`}>Configurações</h1>
         <p className={styles.subtitle}>
           Personalize a experiência do HealthLens conforme sua preferência.
         </p>
@@ -118,26 +115,6 @@ export default function SettingsPage() {
             <h2 className={styles.sectionTitle}>Datasets</h2>
             <p className={styles.sectionDescription}>Limites de preview e exclusão de dados.</p>
           </div>
-        </div>
-
-        <div className={styles.settingRow}>
-          <div className={styles.settingInfo}>
-            <span className={styles.settingLabel}>Limite de linhas para preview</span>
-            <span className={styles.settingHint}>
-              Número máximo de linhas carregadas ao pré-visualizar um dataset. Valores altos podem
-              deixar o navegador mais lento.
-            </span>
-          </div>
-          <select
-            className={styles.select}
-            value={settings.previewRowLimit}
-            onChange={(e) => handleSelect('previewRowLimit', e.target.value)}
-          >
-            <option value="1000">1.000 linhas</option>
-            <option value="2500">2.500 linhas</option>
-            <option value="5000">5.000 linhas</option>
-            <option value="10000">10.000 linhas</option>
-          </select>
         </div>
 
         <div className={styles.settingRow}>

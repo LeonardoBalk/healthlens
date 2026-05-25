@@ -8,15 +8,26 @@
   gap: $space-6;
 }
 
+// Fills the full scrollable area and centers short content (loading, onboarding, error)
+.pageCentered {
+  flex: 1;
+  min-height: calc(100vh - 64px - #{$space-6 * 2});
+  justify-content: center;
+  align-items: center;
+}
+
 .header {
   display: flex;
   flex-direction: column;
   gap: $space-2;
+  padding-bottom: $space-4;
+  border-bottom: 1px solid var(--color-border, $color-border);
 }
 
 .title {
-  font-size: clamp(1.8rem, 3vw, 2.4rem);
-  letter-spacing: -0.02em;
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
 }
 
 .subtitle {
@@ -24,35 +35,206 @@
   max-width: 64ch;
 }
 
-.summaryGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: $space-4;
-}
+// ── Hero card (dataset ativo) ──────────────────────────────────────────────────
 
-.summaryCard {
+.heroCard {
   border: 1px solid var(--color-border, $color-border);
   border-radius: $radius-2xl;
   background: var(--color-surface, $color-surface);
   box-shadow: var(--shadow-sm, $shadow-sm);
-  padding: $space-4;
-  display: flex;
-  flex-direction: column;
-  gap: $space-2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+
+  @media (max-width: 48rem) {
+    grid-template-columns: 1fr;
+  }
 }
 
-.summaryLabel {
-  color: var(--color-text-secondary, $color-text-secondary);
+.heroLeft {
+  padding: $space-5 $space-6;
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  justify-content: space-between;
+}
+
+.heroDatasetMeta {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.heroLabel {
   font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.heroDatasetName {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary, $color-text-primary);
+  margin-top: $space-1;
+  word-break: break-word;
+}
+
+.heroDatasetDetail {
+  font-size: $font-size-sm;
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.metricsStrip {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  flex-wrap: wrap;
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metricLabel {
+  font-size: $font-size-xs;
+  color: var(--color-text-secondary, $color-text-secondary);
   font-weight: $font-weight-semibold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.summaryValue {
-  color: var(--color-text-primary, $color-text-primary);
+.metricValue {
   font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary, $color-text-primary);
 }
+
+.metricDanger {
+  color: var(--color-danger, $color-danger);
+}
+
+.metricDivider {
+  width: 1px;
+  height: 2rem;
+  background: var(--color-border, $color-border);
+  flex-shrink: 0;
+}
+
+.heroRight {
+  border-left: 1px solid var(--color-border, $color-border);
+  padding: $space-4 $space-5;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  background: color-mix(in srgb, var(--color-surface-2, $color-surface-2) 60%, transparent);
+
+  @media (max-width: 48rem) {
+    border-left: none;
+    border-top: 1px solid var(--color-border, $color-border);
+  }
+}
+
+.heroChartLabel {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.heroChart {
+  flex: 1;
+  min-height: 10rem;
+}
+
+// ── Quick nav ──────────────────────────────────────────────────────────────────
+
+.quickNav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-3;
+
+  @media (max-width: 48rem) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.navCard {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-2xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+  padding: $space-4 $space-5;
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color $transition-fast,
+    background-color $transition-fast,
+    box-shadow $transition-fast;
+
+  &:hover {
+    border-color: var(--color-border-strong, $color-border-strong);
+    background: var(--color-surface-2, $color-surface-2);
+    box-shadow: var(--shadow-md, $shadow-md);
+
+    .navCardArrow {
+      opacity: 1;
+      transform: translateX(2px);
+    }
+  }
+}
+
+.navCardIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: $radius-xl;
+  border: 1px solid var(--color-border-strong, $color-border-strong);
+  background: var(--color-surface-2, $color-surface-2);
+  display: grid;
+  place-items: center;
+  color: var(--color-primary, $color-primary);
+  flex-shrink: 0;
+}
+
+.navCardText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.navCardLabel {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.navCardHint {
+  font-size: $font-size-xs;
+  color: var(--color-text-secondary, $color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navCardArrow {
+  color: var(--color-text-secondary, $color-text-secondary);
+  flex-shrink: 0;
+  opacity: 0.4;
+  transition:
+    opacity $transition-fast,
+    transform $transition-fast;
+}
+
+// ── Datasets recentes ──────────────────────────────────────────────────────────
 
 .section {
   display: flex;
@@ -79,8 +261,109 @@
   font-size: $font-size-sm;
 }
 
-.actions {
+// ── Loading ────────────────────────────────────────────────────────────────────
+
+.loadingText {
+  color: var(--color-text-secondary, $color-text-secondary);
+  font-size: $font-size-sm;
+}
+
+// ── Onboarding (sem datasets) ──────────────────────────────────────────────────
+
+.onboarding {
+  border: 1px solid var(--color-border, $color-border);
+  border-radius: $radius-2xl;
+  background: var(--color-surface, $color-surface);
+  box-shadow: var(--shadow-sm, $shadow-sm);
+  padding: $space-8;
   display: flex;
+  flex-direction: column;
+  gap: $space-6;
+  width: min(100%, 40rem);
+}
+
+.onboardingHeader {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.onboardingActions {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
   flex-wrap: wrap;
-  gap: $space-3;
+}
+
+.retryLink {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: $font-size-xs;
+  color: var(--color-text-secondary, $color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color $transition-fast;
+
+  &:hover {
+    color: var(--color-text-primary, $color-text-primary);
+  }
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-4;
+}
+
+.stepNumber {
+  width: 2rem;
+  height: 2rem;
+  border-radius: $radius-full;
+  background: var(--color-primary, $color-primary);
+  color: #fff;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.stepTitle {
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.stepHint {
+  font-size: $font-size-sm;
+  color: var(--color-text-secondary, $color-text-secondary);
+  line-height: 1.55;
+
+  code {
+    font-size: 0.8em;
+    font-family: $font-mono;
+    background: var(--color-surface-2, $color-surface-2);
+    border: 1px solid var(--color-border, $color-border);
+    border-radius: $radius-sm;
+    padding: 1px 5px;
+  }
 }

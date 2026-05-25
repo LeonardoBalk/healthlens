@@ -34,26 +34,89 @@ const formatDate = (isoDate: string) => {
 
 type TrendRow = { label: string; cases: number; deaths: number }
 
-const buildTrendRows = (profile: ChartDatasetProfile): TrendRow[] =>
-  profile.trendData.map((entry) => ({
-    label: entry.group,
-    cases: entry.sampleSize,
-    deaths: entry.secondary ?? 0,
-  }))
+const MONTHS_PT: Record<string, number> = {
+  jan: 0,
+  fev: 1,
+  mar: 2,
+  abr: 3,
+  mai: 4,
+  jun: 5,
+  jul: 6,
+  ago: 7,
+  set: 8,
+  out: 9,
+  nov: 10,
+  dez: 11,
+}
+
+const parseTrendLabel = (label: string): Date | null => {
+  const m = /^([a-záéíóú]{3})\/(\d{2})$/i.exec(label)
+  if (m) {
+    const month = MONTHS_PT[m[1].toLowerCase()]
+    if (month === undefined) return null
+    const yr = parseInt(m[2])
+    return new Date(yr < 50 ? 2000 + yr : 1900 + yr, month, 1)
+  }
+  const y = /^(\d{4})$/.exec(label)
+  if (y) return new Date(parseInt(y[1]), 6, 1)
+  return null
+}
+
+const GAP_THRESHOLD_MONTHS = 3
+
+const buildTrendRows = (
+  profile: ChartDatasetProfile
+): { rows: TrendRow[]; undatedCount: number } => {
+  const undatedCount = profile.trendData
+    .filter((e) => e.group === 'Sem data')
+    .reduce((sum, e) => sum + e.sampleSize, 0)
+
+  const base: TrendRow[] = profile.trendData
+    .filter((e) => e.group !== 'Sem data')
+    .map((entry) => ({
+      label: entry.group,
+      cases: entry.sampleSize,
+      deaths: entry.secondary ?? 0,
+    }))
+
+  const rows: TrendRow[] = []
+  for (let i = 0; i < base.length; i++) {
+    if (i > 0) {
+      const prev = parseTrendLabel(base[i - 1].label)
+      const curr = parseTrendLabel(base[i].label)
+      if (prev && curr) {
+        const months =
+          (curr.getFullYear() - prev.getFullYear()) * 12 + (curr.getMonth() - prev.getMonth())
+        if (months > GAP_THRESHOLD_MONTHS) {
+          rows.push({ label: '', cases: 0, deaths: 0 })
+        }
+      }
+    }
+    rows.push(base[i])
+  }
+
+  return { rows, undatedCount }
+}
 
 export default function ReportsPage() {
   const navigate = useNavigate()
   const { datasets, activeDataset, isLoading, setActiveDataset } = useDatasets()
 
   const profile = activeDataset?.profile ?? null
-  const trendRows = useMemo(() => (profile ? buildTrendRows(profile) : []), [profile])
+
+  const { rows: trendRows, undatedCount } = useMemo(
+    () => (profile ? buildTrendRows(profile) : { rows: [], undatedCount: 0 }),
+    [profile]
+  )
+
+  // gap entries (label: '') only exist to break chart lines — exclude from stats and table
+  const realTrendRows = useMemo(() => trendRows.filter((r) => r.label !== ''), [trendRows])
 
   const totalCases = profile?.rowCount ?? 0
   const totalDeaths = useMemo(() => {
     if (!profile) return 0
     const fromMetrics = profile.metrics.obito?.total
     if (typeof fromMetrics === 'number' && fromMetrics > 0) return Math.round(fromMetrics)
-    // obito.values contains the raw 0/1 column; sum gives full-dataset death count
     const fromValues = profile.metrics.obito?.valores
     if (Array.isArray(fromValues) && fromValues.length > 0) {
       return fromValues.reduce<number>((sum, v) => sum + (v === 1 ? 1 : 0), 0)
@@ -62,9 +125,11 @@ export default function ReportsPage() {
   }, [profile])
 
   const mortalityRate = totalCases > 0 ? (totalDeaths / totalCases) * 100 : 0
-  const hasDeaths = trendRows.some((row) => row.deaths > 0)
+  const hasDeaths = realTrendRows.some((row) => row.deaths > 0)
   const averageCases =
-    trendRows.length > 0 ? trendRows.reduce((sum, row) => sum + row.cases, 0) / trendRows.length : 0
+    realTrendRows.length > 0
+      ? realTrendRows.reduce((sum, row) => sum + row.cases, 0) / realTrendRows.length
+      : 0
 
   if (isLoading) {
     return (
@@ -199,7 +264,7 @@ export default function ReportsPage() {
         </article>
         <article className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Períodos na série</span>
-          <strong className={styles.summaryValue}>{formatInteger(trendRows.length)}</strong>
+          <strong className={styles.summaryValue}>{formatInteger(realTrendRows.length)}</strong>
         </article>
         <article className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Média por período</span>
@@ -220,7 +285,7 @@ export default function ReportsPage() {
                 Casos{hasDeaths ? ' e óbitos' : ''} por período.
               </p>
             </div>
-            <span className={styles.badge}>{trendRows.length} períodos</span>
+            <span className={styles.badge}>{realTrendRows.length} períodos</span>
           </div>
 
           <div className={styles.chartBox} data-no-print>
@@ -271,6 +336,14 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </div>
 
+          {undatedCount > 0 && (
+            <p className={styles.undatedNote}>
+              {undatedCount.toLocaleString('pt-BR')} registro{undatedCount > 1 ? 's' : ''} sem data
+              de notificação {undatedCount > 1 ? 'foram excluídos' : 'foi excluído'} desta
+              visualização.
+            </p>
+          )}
+
           <div className={`${styles.tableWrapper} ${styles.printOnly}`}>
             <table className={styles.table}>
               <thead>
@@ -281,16 +354,23 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {trendRows.map((row) => (
+                {realTrendRows.map((row) => (
                   <tr key={row.label}>
                     <td>{row.label}</td>
                     <td>{formatInteger(row.cases)}</td>
-                    {hasDeaths && <td>{formatInteger(row.deaths)}</td>}
+                    {hasDeaths && <td>{formatInteger(row.deaths ?? 0)}</td>}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {undatedCount > 0 && (
+            <p className={`${styles.undatedNote} ${styles.printOnly}`}>
+              * {undatedCount.toLocaleString('pt-BR')} registro{undatedCount > 1 ? 's' : ''} sem
+              data de notificação excluído{undatedCount > 1 ? 's' : ''} da série temporal.
+            </p>
+          )}
         </section>
       )}
 

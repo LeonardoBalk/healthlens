@@ -20,7 +20,7 @@ import styles from './SeriesPage.module.scss'
 type TrendRow = {
   label: string
   cases: number
-  movingAverage: number
+  movingAverage: number | null
   deaths: number
 }
 
@@ -42,6 +42,36 @@ const safeAverage = (values: number[]) => {
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
+const MONTHS_PT: Record<string, number> = {
+  jan: 0,
+  fev: 1,
+  mar: 2,
+  abr: 3,
+  mai: 4,
+  jun: 5,
+  jul: 6,
+  ago: 7,
+  set: 8,
+  out: 9,
+  nov: 10,
+  dez: 11,
+}
+
+const parseTrendLabel = (label: string): Date | null => {
+  const m = /^([a-záéíóú]{3})\/(\d{2})$/i.exec(label)
+  if (m) {
+    const month = MONTHS_PT[m[1].toLowerCase()]
+    if (month === undefined) return null
+    const yr = parseInt(m[2])
+    return new Date(yr < 50 ? 2000 + yr : 1900 + yr, month, 1)
+  }
+  const y = /^(\d{4})$/.exec(label)
+  if (y) return new Date(parseInt(y[1]), 6, 1)
+  return null
+}
+
+const GAP_THRESHOLD_MONTHS = 3
+
 const variationPercent = (values: number[]) => {
   if (values.length < 2) return 0
   const mid = Math.ceil(values.length / 2)
@@ -52,23 +82,46 @@ const variationPercent = (values: number[]) => {
 }
 
 const getTrendRows = (profile: ChartDatasetProfile): TrendRow[] => {
-  const cases = profile.trendData.map((entry) => entry.sampleSize)
-  const averages = cases.map((_, index) =>
-    safeAverage(cases.slice(Math.max(0, index - 2), index + 1))
-  )
+  const entries = profile.trendData.filter((e) => e.group !== 'Sem data')
+  const cases = entries.map((e) => e.sampleSize)
+  const averages = cases.map((_, i) => safeAverage(cases.slice(Math.max(0, i - 2), i + 1)))
 
-  return profile.trendData.map((entry, index) => ({
+  const base: TrendRow[] = entries.map((entry, i) => ({
     label: entry.group,
     cases: entry.sampleSize,
-    movingAverage: averages[index] ?? entry.sampleSize,
+    movingAverage: averages[i] ?? entry.sampleSize,
     deaths: entry.secondary ?? 0,
   }))
+
+  const result: TrendRow[] = []
+  for (let i = 0; i < base.length; i++) {
+    if (i > 0) {
+      const prev = parseTrendLabel(base[i - 1].label)
+      const curr = parseTrendLabel(base[i].label)
+      if (prev && curr) {
+        const months =
+          (curr.getFullYear() - prev.getFullYear()) * 12 + (curr.getMonth() - prev.getMonth())
+        if (months > GAP_THRESHOLD_MONTHS) {
+          result.push({ label: '', cases: 0, movingAverage: null, deaths: 0 })
+        }
+      }
+    }
+    result.push(base[i])
+  }
+  return result
 }
 
 export default function SeriesPage() {
   const navigate = useNavigate()
   const { datasets, activeDataset, isLoading, setActiveDataset } = useDatasets()
   const [toast, setToast] = useState<string | null>(null)
+  const [periodFilter, setPeriodFilter] = useState<'6' | '12' | '24' | '36' | 'all'>('all')
+  const [trackedDatasetId, setTrackedDatasetId] = useState(activeDataset?.id)
+
+  if (trackedDatasetId !== activeDataset?.id) {
+    setTrackedDatasetId(activeDataset?.id)
+    setPeriodFilter('all')
+  }
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -80,7 +133,39 @@ export default function SeriesPage() {
   )
 
   const profile = activeDataset?.profile ?? null
-  const trendRows = useMemo(() => (profile ? getTrendRows(profile) : []), [profile])
+
+  const undatedCount = useMemo(() => {
+    if (!profile) return 0
+    return profile.trendData
+      .filter((entry) => entry.group === 'Sem data')
+      .reduce((sum, entry) => sum + entry.sampleSize, 0)
+  }, [profile])
+
+  const allTrendRows = useMemo(() => (profile ? getTrendRows(profile) : []), [profile])
+
+  const trendRows = useMemo(() => {
+    if (periodFilter === 'all') return allTrendRows
+    const n = parseInt(periodFilter, 10)
+    const realRows = allTrendRows.filter((r) => r.label !== '')
+    if (!realRows.length) return allTrendRows
+
+    const latestDate = parseTrendLabel(realRows[realRows.length - 1].label)
+    if (!latestDate) return allTrendRows
+
+    const cutoff = new Date(latestDate)
+    cutoff.setMonth(cutoff.getMonth() - n)
+
+    const firstInRange = realRows.find((r) => {
+      const d = parseTrendLabel(r.label)
+      return d !== null && d > cutoff
+    })
+    if (!firstInRange) return allTrendRows
+
+    return allTrendRows.slice(allTrendRows.indexOf(firstInRange))
+  }, [allTrendRows, periodFilter])
+
+  // gap entries (label: '') only exist to break the line — exclude from all stats
+  const realTrendRows = useMemo(() => trendRows.filter((r) => r.label !== ''), [trendRows])
 
   const {
     trendVariation,
@@ -91,25 +176,25 @@ export default function SeriesPage() {
     latestEntry,
     latestDelta,
   } = useMemo(() => {
-    const cases = trendRows.map((row) => row.cases)
+    const cases = realTrendRows.map((row) => row.cases)
     return {
       trendVariation: variationPercent(cases),
-      hasDeaths: trendRows.some((row) => row.deaths > 0),
-      totalPeriods: trendRows.length,
+      hasDeaths: realTrendRows.some((row) => row.deaths > 0),
+      totalPeriods: realTrendRows.length,
       averageCases: safeAverage(cases),
-      peakEntry: trendRows.reduce<TrendRow | null>(
+      peakEntry: realTrendRows.reduce<TrendRow | null>(
         (current, entry) => (!current || entry.cases > current.cases ? entry : current),
         null
       ),
-      latestEntry: trendRows[trendRows.length - 1] ?? null,
+      latestEntry: realTrendRows[realTrendRows.length - 1] ?? null,
       latestDelta: (() => {
-        const latest = trendRows[trendRows.length - 1] ?? null
-        const prev = trendRows[trendRows.length - 2] ?? null
+        const latest = realTrendRows[realTrendRows.length - 1] ?? null
+        const prev = realTrendRows[realTrendRows.length - 2] ?? null
         if (!latest || !prev || prev.cases === 0) return null
         return ((latest.cases - prev.cases) / prev.cases) * 100
       })(),
     }
-  }, [trendRows])
+  }, [realTrendRows])
 
   const latestDeltaLabel = latestDelta === null ? 'Sem dados' : formatSignedPercent(latestDelta)
   const latestDeltaTone =
@@ -146,13 +231,13 @@ export default function SeriesPage() {
           <div className={styles.titleBlock}>
             <h1 className={`gradient-text ${styles.title}`}>Séries Temporais</h1>
             <p className={styles.subtitle}>
-              Nenhum dataset disponível. Faça upload para visualizar as séries temporais.
+              Nenhum dataset disponível para visualizar séries temporais.
             </p>
           </div>
         </header>
         <section className={styles.emptyState}>
           <p className={styles.emptyStateText}>
-            Importe um dataset SINAN para acompanhar a evolução temporal dos casos.
+            Importe um dataset SINAN para acessar as séries temporais.
           </p>
           <Button type="button" size="lg" onClick={() => void navigate('/datasets/new')}>
             <Download size={18} />
@@ -212,6 +297,24 @@ export default function SeriesPage() {
           </select>
         </div>
 
+        <div className={styles.controlGroup} style={{ flex: '0 0 auto', minWidth: '12rem' }}>
+          <label className={styles.controlLabel} htmlFor="series-period-select">
+            Período exibido
+          </label>
+          <select
+            id="series-period-select"
+            value={periodFilter}
+            onChange={(e) => setPeriodFilter(e.target.value as typeof periodFilter)}
+            className={styles.select}
+          >
+            <option value="6">Últimos 6 meses</option>
+            <option value="12">Últimos 12 meses</option>
+            <option value="24">Últimos 24 meses</option>
+            <option value="36">Últimos 36 meses</option>
+            <option value="all">Todos os períodos</option>
+          </select>
+        </div>
+
         <div className={styles.datasetMeta}>
           <span className={styles.metaLabel}>Arquivo</span>
           <strong className={styles.metaValue}>{activeDataset.name}</strong>
@@ -261,7 +364,7 @@ export default function SeriesPage() {
               Casos por período, média móvel e variação percentual.
             </p>
           </div>
-          <span className={styles.badge}>{trendRows.length} períodos</span>
+          <span className={styles.badge}>{realTrendRows.length} períodos</span>
         </div>
 
         <div className={styles.chartBox}>
@@ -272,13 +375,37 @@ export default function SeriesPage() {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={12} />
                 <YAxis tickLine={false} axisLine={false} width={44} />
                 <Tooltip
-                  labelFormatter={(label) => `Período: ${label}`}
-                  formatter={(value, name) => {
-                    if (name === 'cases') return [formatInteger(value as number), 'Casos']
-                    if (name === 'movingAverage')
-                      return [formatDecimal(value as number), 'Média móvel']
-                    if (name === 'deaths') return [formatInteger(value as number), 'Óbitos']
-                    return [String(value), name]
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length || !label) return null
+                    return (
+                      <div className={styles.tooltipBox}>
+                        <p className={styles.tooltipLabel}>Período: {label}</p>
+                        {payload.map((item) => {
+                          if (item.value == null) return null
+                          const name =
+                            item.dataKey === 'cases'
+                              ? 'Casos'
+                              : item.dataKey === 'movingAverage'
+                                ? 'Média móvel'
+                                : item.dataKey === 'deaths'
+                                  ? 'Óbitos'
+                                  : String(item.name)
+                          const formatted =
+                            item.dataKey === 'movingAverage'
+                              ? formatDecimal(item.value as number)
+                              : formatInteger(item.value as number)
+                          return (
+                            <p
+                              key={item.dataKey}
+                              className={styles.tooltipRow}
+                              style={{ color: item.color }}
+                            >
+                              {name}: <strong>{formatted}</strong>
+                            </p>
+                          )
+                        })}
+                      </div>
+                    )
                   }}
                 />
                 <ReferenceLine
@@ -305,6 +432,7 @@ export default function SeriesPage() {
                   stroke="var(--color-info, #0a84ff)"
                   strokeWidth={2.5}
                   dot={false}
+                  connectNulls={false}
                 />
                 {hasDeaths && (
                   <Line
@@ -314,6 +442,7 @@ export default function SeriesPage() {
                     strokeWidth={2}
                     strokeDasharray="4 4"
                     dot={false}
+                    connectNulls={false}
                   />
                 )}
               </ComposedChart>
@@ -327,7 +456,13 @@ export default function SeriesPage() {
           <div>
             <span className={styles.summaryLabel}>Média móvel</span>
             <strong className={styles.summaryValue}>
-              {formatDecimal(safeAverage(trendRows.map((row) => row.movingAverage)))}
+              {formatDecimal(
+                safeAverage(
+                  realTrendRows
+                    .filter((r) => r.movingAverage !== null)
+                    .map((r) => r.movingAverage as number)
+                )
+              )}
             </strong>
           </div>
           <div>
@@ -339,6 +474,13 @@ export default function SeriesPage() {
             </strong>
           </div>
         </div>
+
+        {undatedCount > 0 && (
+          <p className={styles.undatedNote}>
+            {undatedCount.toLocaleString('pt-BR')} registro{undatedCount > 1 ? 's' : ''} sem data de
+            notificação {undatedCount > 1 ? 'foram excluídos' : 'foi excluído'} desta visualização.
+          </p>
+        )}
       </section>
 
       {toast && (

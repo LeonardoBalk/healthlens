@@ -70,8 +70,8 @@ export default function ChatWidget() {
           role: 'assistant',
           content:
             error instanceof Error
-              ? `Nao foi possivel responder: ${error.message}`
-              : 'Nao foi possivel responder agora.',
+              ? `Não foi possível responder: ${error.message}`
+              : 'Não foi possível responder agora.',
         },
       ])
     } finally {

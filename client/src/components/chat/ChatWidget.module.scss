@@ -51,7 +51,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: $space-3;
-  background: color-mix(in srgb, var(--color-primary, $color-primary) 10%, transparent);
+  background: var(--color-primary, $color-primary);
 }
 
 .panelLabel {
@@ -59,28 +59,32 @@
   font-size: $font-size-xs;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-text-secondary, $color-text-secondary);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .panelTitle {
   display: block;
   font-size: $font-size-base;
-  color: var(--color-text-primary, $color-text-primary);
+  color: #fff;
 }
 
 .panelHint {
   display: block;
   font-size: $font-size-xs;
-  color: var(--color-text-secondary, $color-text-secondary);
+  color: rgba(255, 255, 255, 0.7);
   margin-top: $space-1;
 }
 
 .iconButton {
   border: none;
   background: transparent;
-  color: var(--color-text-secondary, $color-text-secondary);
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
   padding: 0;
+
+  &:hover {
+    color: #fff;
+  }
 }
 
 .messages {

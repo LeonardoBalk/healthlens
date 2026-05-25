@@ -2,17 +2,161 @@
 @use "@styles/mixins" as *;
 
 .featuresSection {
-  padding: 6rem 0;
+  padding: 7rem 0;
   background: var(--color-surface-2);
   border-top: 1px solid var(--color-border);
 }
 
+// ── Section header ─────────────────────────────────────────────────────────────
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: $space-4;
+  margin-bottom: $space-16;
+}
+
+.sectionHeaderSpaced {
+  margin-top: $space-24;
+}
+
+.sectionTag {
+  display: inline-flex;
+  align-items: center;
+  padding: $space-1 $space-3;
+  border-radius: $radius-full;
+  border: 1px solid var(--color-border-strong, $color-border-strong);
+  background: var(--color-surface, $color-surface);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary, $color-text-secondary);
+}
+
+.sectionTitle {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: $font-weight-bold;
+  letter-spacing: -0.03em;
+  line-height: $line-height-tight;
+  margin: 0;
+}
+
+.sectionSubtitle {
+  font-size: $font-size-lg;
+  color: var(--color-text-secondary, $color-text-secondary);
+  max-width: 52ch;
+  line-height: $line-height-relaxed;
+  margin: 0;
+}
+
+// ── Steps — desktop ────────────────────────────────────────────────────────────
+
+.stepsRow {
+  display: flex;
+  align-items: flex-start;
+}
+
+.stepItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: $space-4;
+  position: relative;
+  padding: 0 $space-4;
+}
+
+// connector lines — each step owns the left and right half of its connector
+.lineLeft,
+.lineRight {
+  position: absolute;
+  top: 2.5rem;
+  width: 50%;
+  height: 1px;
+  background: var(--color-border-strong, $color-border-strong);
+  z-index: 0;
+}
+
+.lineLeft {
+  left: 0;
+}
+
+.lineRight {
+  right: 0;
+}
+
+// ── Icon circle ────────────────────────────────────────────────────────────────
+
+.stepIconWrapper {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.stepBadge {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: $radius-full;
+  background: var(--color-primary, $color-primary);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: $font-weight-bold;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  line-height: 1;
+}
+
+.stepCircle {
+  width: 5rem;
+  height: 5rem;
+  border-radius: $radius-full;
+  background: var(--color-surface, $color-surface);
+  border: 1px solid var(--color-primary, $color-primary);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--color-primary, $color-primary) 35%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepCircleInner {
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: $radius-full;
+  background: color-mix(in srgb, var(--color-primary, $color-primary) 12%, transparent);
+  color: var(--color-primary, $color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepLabel {
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.stepHint {
+  font-size: $font-size-sm;
+  color: var(--color-text-secondary, $color-text-secondary);
+  line-height: $line-height-relaxed;
+  max-width: 26ch;
+}
+
+// ── Feature cards ──────────────────────────────────────────────────────────────
+
 .featureCard {
-  @include card(var(--space-8));
+  @include card($space-8);
   @include flex-col;
   @include hover-lift;
-  background: var(--color-surface, $color-surface);
-  border: 1px solid var(--color-border, $color-border);
+  gap: $space-4;
   height: 100%;
 }
 
@@ -20,7 +164,24 @@
   width: 48px;
   height: 48px;
   border-radius: $radius-md;
-  background: var(--color-primary-glow);
+  background: color-mix(in srgb, var(--color-primary, $color-primary) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary, $color-primary) 30%, transparent);
+  color: var(--color-primary, $color-primary);
   @include flex-center;
-  border: 1px solid var(--color-primary-glow);
+  flex-shrink: 0;
+}
+
+.featureTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-primary, $color-text-primary);
+  margin: 0;
+}
+
+.featureDescription {
+  font-size: $font-size-sm;
+  color: var(--color-text-secondary, $color-text-secondary);
+  line-height: $line-height-relaxed;
+  flex: 1;
+  margin: 0;
 }

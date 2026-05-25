@@ -268,16 +268,13 @@ export default function ChartsPage() {
         <header className={styles.header}>
           <div className={styles.titleBlock}>
             <h1 className={`gradient-text ${styles.title}`}>Gráficos</h1>
-            <p className={styles.subtitle}>
-              Nenhum dataset disponível. Faça upload de um arquivo SINAN para gerar a dashboard.
-            </p>
+            <p className={styles.subtitle}>Nenhum dataset disponível para gerar gráficos.</p>
           </div>
         </header>
 
         <section className={styles.emptyState}>
           <p className={styles.emptyStateText}>
-            A dashboard trabalha com indicadores do SINAN: notificações, óbitos, curvas temporais e
-            distribuição demográfica.
+            Importe um dataset SINAN para acessar os gráficos epidemiológicos.
           </p>
           <Button type="button" size="lg" onClick={() => void navigate('/datasets/new')}>
             <Download size={18} />

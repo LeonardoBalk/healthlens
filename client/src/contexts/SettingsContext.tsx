@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 
 export type AppSettings = {
   animationsEnabled: boolean
-  previewRowLimit: string
   recentDatasetsCount: string
   confirmBeforeDelete: boolean
 }
@@ -17,7 +16,6 @@ const STORAGE_KEY = 'healthlens-settings'
 
 const defaultSettings: AppSettings = {
   animationsEnabled: true,
-  previewRowLimit: '5000',
   recentDatasetsCount: '5',
   confirmBeforeDelete: true,
 }

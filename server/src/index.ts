@@ -25,7 +25,6 @@ const app = express()
 const PORT = process.env.PORT ?? 3003
 const MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024
 const ALLOWED_EXTENSIONS = new Set(['.csv', '.json', '.xlsx', '.dbc'])
-const MAX_PREVIEW_ROWS = Number.MAX_SAFE_INTEGER
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-1.5-flash'
 
@@ -95,17 +94,22 @@ const buildSystemInstruction = (summary: Record<string, unknown>, datasetName: s
     : `${datasetName} (SINAN)`
 
   return [
-    'Voce e um assistente de dados epidemiologicos especializado no SINAN.',
-    'Responda perguntas sobre os dados com base no resumo agregado fornecido.',
-    'Para perguntas fora do escopo dos dados, use o contexto da conversa quando disponivel.',
-    'Nao invente numeros ou estatisticas que nao estejam no resumo.',
-    'Se realmente nao houver informacao suficiente, diga isso claramente.',
+    'Voce e um assistente especializado em vigilancia epidemiologica e dados do SINAN.',
+    '',
+    'Voce tem tres modos de resposta:',
+    '1. Perguntas sobre os dados do dataset: responda com base no resumo agregado fornecido abaixo. Nao invente numeros ou estatisticas que nao estejam no resumo.',
+    '2. Calculos e raciocinio sobre os dados: voce PODE e DEVE fazer calculos (porcentagens, medias, comparacoes, tendencias, etc.) a partir dos numeros presentes no resumo. Mostre o raciocinio de forma clara.',
+    '3. Perguntas gerais sobre saude, doencas, epidemiologia, agravos ou conceitos medicos: responda usando seu conhecimento geral, mesmo que a informacao nao esteja no resumo. Exemplos: "o que e botulismo?", "como se transmite dengue?", "quais os sintomas de leishmaniose?".',
+    '',
+    'Se uma pergunta misturar dados especificos do dataset com conceito geral, responda os dois aspectos.',
+    'Nunca recuse responder uma pergunta medica ou epidemiologica por "falta de informacao no dataset".',
+    'Nunca recuse fazer um calculo quando os dados necessarios estiverem no resumo.',
     'Responda em pt-BR.',
     'Formate a resposta em texto simples, com quebras de linha.',
     'Use bullets com o simbolo "•" quando listar itens.',
     'Nao use markdown (sem **, sem listas com * ou -).',
     '',
-    `Dataset: ${datasetDescription}`,
+    `Dataset ativo: ${datasetDescription}`,
     'Resumo agregado (JSON):',
     JSON.stringify(summary, null, 2),
   ].join('\n')
@@ -159,7 +163,6 @@ const parseDbcBuffer = async (buffer: Buffer): Promise<RowRecord[]> => {
       if (record && typeof record === 'object') {
         records.push(record as RowRecord)
       }
-      if (records.length >= MAX_PREVIEW_ROWS) break
     }
 
     return records
@@ -565,6 +568,100 @@ app.delete('/api/datasets/:datasetId', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Delete dataset error:', err)
     return res.status(500).json({ message: 'Erro ao excluir dataset.' })
+  }
+})
+
+app.get('/api/datasets/:datasetId/file-url', async (req: Request, res: Response) => {
+  const userId = (req as AuthenticatedRequest).user?.id
+  if (!userId) return res.status(401).json({ message: 'Autenticação necessária.' })
+
+  const datasetId = typeof req.params.datasetId === 'string' ? req.params.datasetId : ''
+  if (!datasetId) return res.status(400).json({ message: 'Dataset inválido.' })
+
+  try {
+    const { data, error } = await supabase
+      .from('datasets')
+      .select('id,stats_json')
+      .eq('id', datasetId)
+      .eq('user_id', userId)
+      .single()
+
+    if (error || !data) return res.status(404).json({ message: 'Dataset não encontrado.' })
+
+    const stats = (data as DatasetRow).stats_json as Record<string, unknown> | null
+    const storagePath = typeof stats?.storagePath === 'string' ? stats.storagePath : null
+    const storageBucket =
+      typeof stats?.storageBucket === 'string'
+        ? stats.storageBucket
+        : (process.env.SUPABASE_STORAGE_BUCKET ?? 'datasets')
+    const mapping = stats?.mapping ?? null
+    const originalName = typeof stats?.originalName === 'string' ? stats.originalName : 'dataset'
+    const extension = path.extname(originalName).toLowerCase()
+
+    if (!storagePath) return res.status(400).json({ message: 'Arquivo original não encontrado.' })
+
+    const { data: signedData, error: signedError } = await supabase.storage
+      .from(storageBucket)
+      .createSignedUrl(storagePath, 120)
+
+    if (signedError || !signedData?.signedUrl) {
+      return res.status(500).json({ message: 'Falha ao gerar URL de download.' })
+    }
+
+    return res.json({ url: signedData.signedUrl, mapping, extension })
+  } catch (err) {
+    console.error('file-url error:', err)
+    return res.status(500).json({ message: 'Erro ao gerar URL.' })
+  }
+})
+
+app.patch('/api/datasets/:datasetId', async (req: Request, res: Response) => {
+  const userId = (req as AuthenticatedRequest).user?.id
+  if (!userId) return res.status(401).json({ message: 'Autenticação necessária.' })
+
+  const datasetId = typeof req.params.datasetId === 'string' ? req.params.datasetId : ''
+  if (!datasetId) return res.status(400).json({ message: 'Dataset inválido.' })
+
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const newProfile = body['profile']
+  if (!newProfile || typeof newProfile !== 'object') {
+    return res.status(400).json({ message: 'Perfil inválido.' })
+  }
+
+  try {
+    const { data: existing, error: fetchError } = await supabase
+      .from('datasets')
+      .select('id,stats_json')
+      .eq('id', datasetId)
+      .eq('user_id', userId)
+      .single()
+
+    if (fetchError || !existing) return res.status(404).json({ message: 'Dataset não encontrado.' })
+
+    const stats = ((existing as DatasetRow).stats_json ?? {}) as Record<string, unknown>
+    const updatedStats = { ...stats, profile: newProfile }
+
+    const profile = newProfile as Record<string, unknown>
+    const { error: updateError } = await supabase
+      .from('datasets')
+      .update({
+        stats_json: updatedStats as Json,
+        row_count: typeof profile['rowCount'] === 'number' ? profile['rowCount'] : undefined,
+        column_count:
+          typeof profile['columnCount'] === 'number' ? profile['columnCount'] : undefined,
+      })
+      .eq('id', datasetId)
+      .eq('user_id', userId)
+
+    if (updateError) {
+      console.error('PATCH dataset error:', updateError)
+      return res.status(500).json({ message: 'Falha ao atualizar dataset.' })
+    }
+
+    return res.json({ message: 'Perfil atualizado com sucesso.' })
+  } catch (err) {
+    console.error('PATCH dataset error:', err)
+    return res.status(500).json({ message: 'Erro ao atualizar dataset.' })
   }
 })
 

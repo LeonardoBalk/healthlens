@@ -205,7 +205,7 @@
   @include gradient-text;
 }
 .gradient-text-primary {
-  @include gradient-text(var(--color-primary), var(--color-primary-light));
+  @include gradient-text;
 }
 
 // ── Border ────────────────────────────────────────────────────────────────────

@@ -129,7 +129,7 @@ export default function ProfilePage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Perfil</h1>
+        <h1 className={`gradient-text ${styles.title}`}>Perfil</h1>
         <p className={styles.subtitle}>Informações da sua conta e sessão ativa.</p>
       </header>
 

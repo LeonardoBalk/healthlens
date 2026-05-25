@@ -1,12 +1,22 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/Button/Button'
 import { Logo } from '@/components/ui/Logo/Logo'
 import { useTheme } from '@/contexts/ThemeContext'
+import { supabase } from '@/lib/supabase'
 import styles from './Navbar.module.scss'
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme()
+  const [authenticated, setAuthenticated] = useState(false)
+
+  useEffect(() => {
+    if (!supabase) return
+    void supabase.auth.getSession().then(({ data }) => {
+      setAuthenticated(!!data.session)
+    })
+  }, [])
 
   return (
     <header className={styles.navbar}>
@@ -30,14 +40,22 @@ export function Navbar() {
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <Link to="/login" aria-label="Ir para login">
-            <Button size="sm" variant="outline">
-              Login
-            </Button>
-          </Link>
-          <Link to="/datasets" aria-label="Ir para datasets">
-            <Button size="sm">Começar</Button>
-          </Link>
+          {authenticated ? (
+            <Link to="/datasets" aria-label="Ir para o painel">
+              <Button size="sm">Ir para o painel</Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" aria-label="Fazer login">
+                <Button size="sm" variant="outline">
+                  Login
+                </Button>
+              </Link>
+              <Link to="/login" aria-label="Criar conta">
+                <Button size="sm">Começar</Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

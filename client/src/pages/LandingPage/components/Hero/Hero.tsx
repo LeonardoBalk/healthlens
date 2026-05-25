@@ -12,18 +12,20 @@ export function Hero() {
         transition={{ duration: 0.6 }}
         className={styles.heroContent}
       >
-        <h1 className="font-normal">
-          <span className="gradient-text-primary font-semibold">Análise de Dados </span>
-          do SINAN
-        </h1>
+        <h1 className="gradient-text font-semibold">Análise de Dados do SINAN</h1>
         <p className="text-secondary text-xl mt-6">
           Plataforma para análise de dados epidemiológicos do SINAN. Visualize séries temporais,
           explore indicadores e gere insights com IA.
         </p>
 
         <div className={styles.heroButtons}>
-          <Link to="/datasets" aria-label="Ir para datasets">
-            <Button size="lg">Analisar Dados Epidemiológicos</Button>
+          <Link to="/login" aria-label="Criar conta ou fazer login">
+            <Button size="lg">Começar agora</Button>
+          </Link>
+          <Link to="/login" aria-label="Fazer login">
+            <Button size="lg" variant="outline">
+              Já tenho conta
+            </Button>
           </Link>
         </div>
 

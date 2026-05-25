@@ -296,7 +296,7 @@ export default function DatasetUploadPage() {
   return (
     <div className={styles.page}>
       <header className={styles.headingBlock}>
-        <h1 className="gradient-text">Upload de Dataset Epidemiológico</h1>
+        <h1 className={`gradient-text ${styles.title}`}>Upload de Dataset Epidemiológico</h1>
         <p className={styles.subtitle}>
           Selecione seu arquivo do SINAN para iniciar a análise no HealthLens.
         </p>

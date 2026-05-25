@@ -98,22 +98,6 @@ const MAX_SEGMENT_BARS = 10
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:3003'
 
-const getPreviewRowLimit = (): number => {
-  try {
-    const saved = localStorage.getItem('healthlens-settings')
-    if (saved) {
-      const parsed = JSON.parse(saved) as Record<string, unknown>
-      if (parsed && typeof parsed.previewRowLimit === 'string') {
-        const limit = Number(parsed.previewRowLimit)
-        if (Number.isFinite(limit) && limit > 0) return limit
-      }
-    }
-  } catch {
-    // Ignore error
-  }
-  return 5000
-}
-
 const safeRound = (value: number, decimals = 0) => {
   if (!Number.isFinite(value)) return 0
   const factor = 10 ** decimals
@@ -290,7 +274,6 @@ const buildSinanTrendData = (rows: RowRecord[]) => {
       highCount: entry.deaths,
       lowShare: entry.count ? safeRound((entry.deaths / entry.count) * 100, 1) : 0,
     }))
-    .slice(-12)
 }
 
 const buildSinanSegmentData = (rows: RowRecord[]) => {
@@ -1263,7 +1246,7 @@ const fetchDbcRowsFromServer = async (file: File): Promise<RowRecord[]> => {
     const payload = (await response.json().catch(() => null)) as { rows?: RowRecord[] } | null
 
     if (!response.ok || !payload?.rows) return []
-    return payload.rows.slice(0, getPreviewRowLimit())
+    return payload.rows
   } catch {
     return []
   }
@@ -1292,7 +1275,7 @@ const buildEmptyProfile = (): ChartDatasetProfile => ({
 })
 
 const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
-  const rows = rowsInput.slice(0, getPreviewRowLimit())
+  const rows = rowsInput
   const columns = Array.from(
     rows.reduce((set, row) => {
       Object.keys(row).forEach((key) => set.add(key))
@@ -1603,7 +1586,7 @@ const buildProfileFromRows = (rowsInput: RowRecord[]): ChartDatasetProfile => {
           })
         })
 
-      const groupedValues = Array.from(grouped.values()).slice(-MAX_TREND_GROUPS)
+      const groupedValues = Array.from(grouped.values())
       if (groupedValues.length) {
         hasTimeDimension = groupedValues.length > 1
         groupingDimension = primaryDateCandidate.column
@@ -2045,6 +2028,47 @@ export const deleteChartDataset = async (datasetId: string): Promise<boolean> =>
     })
 
     return response.ok
+  } catch {
+    return false
+  }
+}
+
+export const regenerateDatasetProfile = async (datasetId: string): Promise<boolean> => {
+  try {
+    const headers = await buildAuthHeaders()
+
+    const urlRes = await fetch(`${API_BASE_URL}/api/datasets/${datasetId}/file-url`, { headers })
+    if (!urlRes.ok) return false
+
+    const { url, mapping, extension } = (await urlRes.json()) as {
+      url: string
+      mapping: Record<string, string> | null
+      extension: string
+    }
+
+    const fileRes = await fetch(url)
+    if (!fileRes.ok) return false
+
+    const blob = await fileRes.blob()
+    const file = new File([blob], `dataset${extension}`, { type: blob.type })
+
+    let rows: RowRecord[]
+    if (extension === '.dbc') {
+      rows = await fetchDbcRowsFromServer(file)
+    } else {
+      rows = await parseRowsFromFile(file)
+    }
+
+    const mappedRows = mapping ? applySinanFieldMapping(rows, mapping as SinanFieldMapping) : rows
+    const profile = mappedRows.length ? buildProfileFromRows(mappedRows) : buildEmptyProfile()
+
+    const patchRes = await fetch(`${API_BASE_URL}/api/datasets/${datasetId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ profile }),
+    })
+
+    return patchRes.ok
   } catch {
     return false
   }

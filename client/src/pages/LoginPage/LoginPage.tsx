@@ -289,7 +289,7 @@ export default function LoginPage() {
         </div>
 
         <div className={styles.brandContent}>
-          <h1 className={styles.brandTitle}>
+          <h1 className={`gradient-text ${styles.brandTitle}`}>
             Seu dataset clínico,
             <br />
             entendido em segundos.

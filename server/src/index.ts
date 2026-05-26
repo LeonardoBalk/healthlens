@@ -297,40 +297,53 @@ app.post('/api/chat', chatRateLimit, async (req: Request, res: Response) => {
     .filter((msg) => msg.content.length > 0)
     .slice(-16)
 
-  try {
-    const systemInstruction = buildSystemInstruction(
-      summary as Record<string, unknown>,
-      datasetName
-    )
-    const contents = buildGeminiContents(question, history)
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          contents,
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 1000,
-          },
-        }),
+  const systemInstruction = buildSystemInstruction(summary as Record<string, unknown>, datasetName)
+  const contents = buildGeminiContents(question, history)
+  const geminiBody = JSON.stringify({
+    systemInstruction: { parts: [{ text: systemInstruction }] },
+    contents,
+    generationConfig: { temperature: 0.2, maxOutputTokens: 1000 },
+  })
+
+  const MAX_ATTEMPTS = 3
+  const RETRY_DELAY_MS = 1500
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody }
+      )
+
+      const payload = await response.json().catch(() => null)
+
+      if (response.status === 429 || response.status >= 500) {
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt))
+          continue
+        }
+        console.error(`Gemini error after ${MAX_ATTEMPTS} attempts:`, payload)
+        return res.status(500).json({ message: 'Falha ao consultar o Gemini.' })
       }
-    )
 
-    const payload = await response.json().catch(() => null)
-    if (!response.ok) {
-      console.error('Gemini error:', payload)
-      return res.status(500).json({ message: 'Falha ao consultar o Gemini.' })
+      if (!response.ok) {
+        console.error('Gemini error:', payload)
+        return res.status(500).json({ message: 'Falha ao consultar o Gemini.' })
+      }
+
+      const answer = extractGeminiAnswer(payload)
+      return res.json({ answer: answer ?? 'Sem resposta do assistente.' })
+    } catch (err) {
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt))
+        continue
+      }
+      console.error('Chat handler error:', err)
+      return res.status(500).json({ message: 'Erro ao gerar resposta.' })
     }
-
-    const answer = extractGeminiAnswer(payload)
-    return res.json({ answer: answer ?? 'Sem resposta do assistente.' })
-  } catch (err) {
-    console.error('Chat handler error:', err)
-    return res.status(500).json({ message: 'Erro ao gerar resposta.' })
   }
+
+  return res.status(500).json({ message: 'Falha ao consultar o Gemini.' })
 })
 
 app.post('/api/datasets/upload', upload.single('file'), async (req: Request, res: Response) => {

@@ -256,6 +256,10 @@
   display: none !important;
 }
 
+.screenOnly {
+  // visible on screen; hidden in print via @media print below
+}
+
 .undatedNote {
   margin-top: $space-3;
   font-size: $font-size-xs;
@@ -285,6 +289,17 @@
 // ── Print ─────────────────────────────────────────────────────────────────────
 
 @media print {
+  // ── Ocultar elementos de tela ──────────────────────────────────────────────
+  .header,
+  .controlBar,
+  .screenOnly {
+    display: none !important;
+  }
+
+  .printOnly {
+    display: block !important;
+  }
+
   // ── Cabeçalho do documento ────────────────────────────────────────────────
   .printHeader {
     display: flex !important;
@@ -301,17 +316,20 @@
     gap: 0.5rem;
   }
 
-  .printLogo {
-    width: 26px;
-    height: 22px;
-    object-fit: contain;
-  }
-
   .printBrandName {
     font-size: 14pt;
     font-weight: 700;
-    color: var(--color-primary, #c8102e);
     letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+  }
+
+  .printBrandHealth {
+    color: #111;
+  }
+
+  .printBrandLens {
+    color: #c8102e;
   }
 
   .printHeaderMeta {
@@ -321,10 +339,6 @@
     gap: 1px;
     font-size: 8pt;
     color: #444;
-  }
-
-  .printOnly {
-    display: block !important;
   }
 
   .undatedNote {
@@ -410,9 +424,10 @@
 
   // ── Gráfico ────────────────────────────────────────────────────────────────
   .chartBox {
+    height: 200px !important;
+    min-height: 200px !important;
     break-inside: avoid;
     page-break-inside: avoid;
-    /* Remove fixação de altura no print para evitar overflow do Recharts */
   }
 
   // ── Tabelas ────────────────────────────────────────────────────────────────

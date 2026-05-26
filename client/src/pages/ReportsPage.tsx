@@ -13,6 +13,7 @@ import {
 } from 'recharts'
 import { Download, FileJson, FileText, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/Button/Button'
+import { Logo } from '@/components/ui/Logo/Logo'
 import { useDatasets } from '@/contexts/DatasetContext'
 import { exportDataset, type ChartDatasetProfile } from '@/utils/chartDatasets'
 import styles from './ReportsPage.module.scss'
@@ -98,6 +99,9 @@ const buildTrendRows = (
   return { rows, undatedCount }
 }
 
+const PRINT_CHART_WIDTH = 700
+const PRINT_CHART_HEIGHT = 200
+
 export default function ReportsPage() {
   const navigate = useNavigate()
   const { datasets, activeDataset, isLoading, setActiveDataset } = useDatasets()
@@ -109,7 +113,6 @@ export default function ReportsPage() {
     [profile]
   )
 
-  // gap entries (label: '') only exist to break chart lines — exclude from stats and table
   const realTrendRows = useMemo(() => trendRows.filter((r) => r.label !== ''), [trendRows])
 
   const totalCases = profile?.rowCount ?? 0
@@ -130,6 +133,12 @@ export default function ReportsPage() {
     realTrendRows.length > 0
       ? realTrendRows.reduce((sum, row) => sum + row.cases, 0) / realTrendRows.length
       : 0
+
+  const ageStats = profile?.metrics.nu_idade_n
+  const peakEntry = realTrendRows.reduce<TrendRow | null>(
+    (cur, row) => (!cur || row.cases > cur.cases ? row : cur),
+    null
+  )
 
   if (isLoading) {
     return (
@@ -166,8 +175,61 @@ export default function ReportsPage() {
     )
   }
 
+  const chartContent = (
+    <>
+      <CartesianGrid stroke="var(--color-border-strong, #3f3f46)" strokeDasharray="3 3" />
+      <XAxis
+        dataKey="label"
+        tickLine={false}
+        axisLine={false}
+        minTickGap={12}
+        tick={{ fontSize: 11 }}
+      />
+      <YAxis tickLine={false} axisLine={false} width={40} tick={{ fontSize: 11 }} />
+      <Tooltip
+        labelFormatter={(label) => `Período: ${label}`}
+        formatter={(value, name) => {
+          if (name === 'cases') return [formatInteger(value as number), 'Casos']
+          if (name === 'deaths') return [formatInteger(value as number), 'Óbitos']
+          return [String(value), name]
+        }}
+      />
+      <ReferenceLine
+        y={Math.round(averageCases)}
+        stroke="var(--color-text-secondary)"
+        strokeDasharray="6 3"
+        strokeOpacity={0.5}
+        label={{
+          value: 'Média',
+          position: 'insideTopRight',
+          fontSize: 10,
+          fill: 'var(--color-text-secondary)',
+        }}
+      />
+      <Bar
+        dataKey="cases"
+        fill="var(--color-primary, #ff2d55)"
+        radius={[4, 4, 0, 0]}
+        maxBarSize={24}
+        isAnimationActive={false}
+      />
+      {hasDeaths && (
+        <Line
+          type="monotone"
+          dataKey="deaths"
+          stroke="var(--color-danger, #ff3b30)"
+          strokeWidth={2}
+          strokeDasharray="4 4"
+          dot={false}
+          isAnimationActive={false}
+        />
+      )}
+    </>
+  )
+
   return (
     <div className={styles.page}>
+      {/* Cabeçalho de tela */}
       <header className={styles.header} data-no-print>
         <div className={styles.titleBlock}>
           <h1 className={`gradient-text ${styles.title}`}>Relatórios</h1>
@@ -190,17 +252,22 @@ export default function ReportsPage() {
         </div>
       </header>
 
+      {/* Cabeçalho de impressão */}
       <div className={styles.printHeader}>
         <div className={styles.printHeaderBrand}>
-          <img src="/healthlens-logo.svg" alt="HealthLens" className={styles.printLogo} />
-          <span className={styles.printBrandName}>HealthLens</span>
+          <Logo size={26} />
+          <span className={styles.printBrandName}>
+            <span className={styles.printBrandHealth}>Health</span>
+            <span className={styles.printBrandLens}>Lens</span>
+          </span>
         </div>
         <div className={styles.printHeaderMeta}>
           <strong>{activeDataset.name}</strong>
-          <span>Gerado em {new Date().toLocaleDateString('pt-BR')}</span>
+          <span>Relatório epidemiológico · {new Date().toLocaleDateString('pt-BR')}</span>
         </div>
       </div>
 
+      {/* Seletor de dataset */}
       <section className={styles.controlBar} aria-label="Selecionar dataset" data-no-print>
         <div className={styles.controlGroup}>
           <label className={styles.controlLabel} htmlFor="reports-dataset-select">
@@ -241,6 +308,7 @@ export default function ReportsPage() {
         </div>
       </section>
 
+      {/* Indicadores */}
       <section className={styles.summaryGrid} aria-label="Indicadores principais">
         <article className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Total de registros</span>
@@ -270,70 +338,57 @@ export default function ReportsPage() {
           <span className={styles.summaryLabel}>Média por período</span>
           <strong className={styles.summaryValue}>{formatDecimal(averageCases)}</strong>
         </article>
+        {peakEntry && (
+          <article className={styles.summaryCard}>
+            <span className={styles.summaryLabel}>Pico</span>
+            <strong className={styles.summaryValue}>
+              {formatInteger(peakEntry.cases)} · {peakEntry.label}
+            </strong>
+          </article>
+        )}
+        {ageStats && ageStats.mediana > 0 && (
+          <article className={styles.summaryCard}>
+            <span className={styles.summaryLabel}>Idade mediana</span>
+            <strong className={styles.summaryValue}>{formatDecimal(ageStats.mediana)} anos</strong>
+          </article>
+        )}
         <article className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>Upload em</span>
+          <span className={styles.summaryLabel}>Importado em</span>
           <strong className={styles.summaryValue}>{formatDate(activeDataset.uploadedAt)}</strong>
         </article>
       </section>
 
+      {/* Gráfico temporal */}
       {trendRows.length > 0 && (
         <section className={styles.card} aria-label="Série temporal">
           <div className={styles.cardHeader}>
             <div>
               <h2 className={styles.cardTitle}>Evolução Temporal</h2>
               <p className={styles.cardDescription}>
-                Casos{hasDeaths ? ' e óbitos' : ''} por período.
+                Casos{hasDeaths ? ' e óbitos' : ''} por período · média de referência indicada.
               </p>
             </div>
             <span className={styles.badge}>{realTrendRows.length} períodos</span>
           </div>
 
-          <div className={styles.chartBox} data-no-print>
+          {/* Screen chart — hidden in print */}
+          <div className={`${styles.chartBox} ${styles.screenOnly}`}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={trendRows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                <CartesianGrid stroke="var(--color-border-strong, #3f3f46)" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={12} />
-                <YAxis tickLine={false} axisLine={false} width={44} />
-                <Tooltip
-                  labelFormatter={(label) => `Período: ${label}`}
-                  formatter={(value, name) => {
-                    if (name === 'cases') return [formatInteger(value as number), 'Casos']
-                    if (name === 'deaths') return [formatInteger(value as number), 'Óbitos']
-                    return [String(value), name]
-                  }}
-                />
-                <ReferenceLine
-                  y={Math.round(averageCases)}
-                  stroke="var(--color-text-secondary)"
-                  strokeDasharray="6 3"
-                  strokeOpacity={0.5}
-                  label={{
-                    value: 'Média',
-                    position: 'insideTopRight',
-                    fontSize: 11,
-                    fill: 'var(--color-text-secondary)',
-                  }}
-                />
-                <Bar
-                  dataKey="cases"
-                  fill="var(--color-primary, #ff2d55)"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={28}
-                  isAnimationActive={false}
-                />
-                {hasDeaths && (
-                  <Line
-                    type="monotone"
-                    dataKey="deaths"
-                    stroke="var(--color-danger, #ff3b30)"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                )}
+                {chartContent}
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+          {/* Print chart — fixed dimensions, always rendered, hidden on screen */}
+          <div className={styles.printOnly}>
+            <ComposedChart
+              width={PRINT_CHART_WIDTH}
+              height={PRINT_CHART_HEIGHT}
+              data={trendRows}
+              margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+            >
+              {chartContent}
+            </ComposedChart>
           </div>
 
           {undatedCount > 0 && (
@@ -343,37 +398,10 @@ export default function ReportsPage() {
               visualização.
             </p>
           )}
-
-          <div className={`${styles.tableWrapper} ${styles.printOnly}`}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Período</th>
-                  <th>Casos</th>
-                  {hasDeaths && <th>Óbitos</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {realTrendRows.map((row) => (
-                  <tr key={row.label}>
-                    <td>{row.label}</td>
-                    <td>{formatInteger(row.cases)}</td>
-                    {hasDeaths && <td>{formatInteger(row.deaths ?? 0)}</td>}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {undatedCount > 0 && (
-            <p className={`${styles.undatedNote} ${styles.printOnly}`}>
-              * {undatedCount.toLocaleString('pt-BR')} registro{undatedCount > 1 ? 's' : ''} sem
-              data de notificação excluído{undatedCount > 1 ? 's' : ''} da série temporal.
-            </p>
-          )}
         </section>
       )}
 
+      {/* Distribuição demográfica */}
       {profile.segmentData.length > 0 && (
         <section className={styles.card} aria-label="Distribuição por segmento">
           <div className={styles.cardHeader}>
@@ -420,6 +448,7 @@ export default function ReportsPage() {
         </section>
       )}
 
+      {/* Estatísticas descritivas */}
       {profile.distributionData.length > 0 && (
         <section className={styles.card} aria-label="Estatísticas de distribuição">
           <div className={styles.cardHeader}>

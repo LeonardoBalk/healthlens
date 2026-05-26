@@ -2276,7 +2276,7 @@ type ChatSummary = {
   tertiaryMetric: string | null
   hasTimeDimension: boolean
   groupingDimension: string
-  trendData: Array<{ group: string; cases: number; secondary: number | null }>
+  trendData: Array<{ group: string; cases: number; deaths: number | null }>
   segmentData: SegmentSharePoint[]
   histogramData: HistogramPoint[]
   distributionData: DistributionPoint[]
@@ -2303,7 +2303,7 @@ const buildChatSummary = (profile: ChartDatasetProfile): ChatSummary => {
     trendData: profile.trendData.map((entry) => ({
       group: entry.group,
       cases: entry.sampleSize,
-      secondary: entry.secondary ?? null,
+      deaths: entry.secondary ?? null,
     })),
     segmentData: profile.segmentData,
     histogramData: profile.histogramData,

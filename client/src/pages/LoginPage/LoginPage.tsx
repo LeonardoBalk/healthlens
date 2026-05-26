@@ -285,18 +285,20 @@ export default function LoginPage() {
 
         <div className={styles.brandLogo}>
           <Logo size={40} className={styles.logoIcon} />
-          <span className={styles.brandName}>HealthLens</span>
+          <span className={styles.brandName}>
+            <span className={styles.brandHealth}>Health</span>
+            <span className={styles.brandLens}>Lens</span>
+          </span>
         </div>
 
         <div className={styles.brandContent}>
           <h1 className={`gradient-text ${styles.brandTitle}`}>
-            Seu dataset clínico,
+            Dados do SINAN,
             <br />
-            entendido em segundos.
+            analisados em segundos.
           </h1>
           <p className={styles.brandSubtitle}>
-            Solução inteligente para análise de dados médicos, relatórios e detecção de anomalias
-            com agilidade e precisão automatizada.
+            Importe arquivos do DataSUS, visualize curvas epidemiológicas e gere insights com IA.
           </p>
         </div>
       </div>

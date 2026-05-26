@@ -13,7 +13,7 @@ export function Logo({ size = 32, className, ...props }: LogoProps) {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 200 170"
       width={size}
-      height={size}
+      height={Number(size) * (170 / 200)}
       className={className}
       {...props}
     >

@@ -67,6 +67,16 @@
   font-size: $font-size-2xl;
   font-weight: $font-weight-bold;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+}
+
+.brandHealth {
+  color: var(--color-text-primary, $color-text-primary);
+}
+
+.brandLens {
+  color: $color-primary;
 }
 
 .brandContent {

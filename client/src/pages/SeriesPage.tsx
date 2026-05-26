@@ -72,13 +72,48 @@ const parseTrendLabel = (label: string): Date | null => {
 
 const GAP_THRESHOLD_MONTHS = 3
 
-const variationPercent = (values: number[]) => {
-  if (values.length < 2) return 0
-  const mid = Math.ceil(values.length / 2)
-  const firstAvg = safeAverage(values.slice(0, mid))
-  const secondAvg = safeAverage(values.slice(mid))
-  if (firstAvg === 0) return secondAvg === 0 ? 0 : 100
-  return ((secondAvg - firstAvg) / Math.abs(firstAvg)) * 100
+const variationPercent = (
+  filteredRows: TrendRow[],
+  allRows: TrendRow[]
+): { value: number; method: 'yoy' | 'half' } => {
+  const realFiltered = filteredRows.filter((r) => r.label !== '')
+  if (realFiltered.length < 2) return { value: 0, method: 'half' }
+
+  const filteredWithDates = realFiltered
+    .map((r) => ({ cases: r.cases, date: parseTrendLabel(r.label) }))
+    .filter((r): r is { cases: number; date: Date } => r.date !== null)
+
+  if (filteredWithDates.length >= 2) {
+    const firstDate = filteredWithDates[0].date
+    const lastDate = filteredWithDates[filteredWithDates.length - 1].date
+
+    const priorFirst = new Date(firstDate)
+    priorFirst.setFullYear(priorFirst.getFullYear() - 1)
+    const priorLast = new Date(lastDate)
+    priorLast.setFullYear(priorLast.getFullYear() - 1)
+
+    const allWithDates = allRows
+      .filter((r) => r.label !== '')
+      .map((r) => ({ cases: r.cases, date: parseTrendLabel(r.label) }))
+      .filter((r): r is { cases: number; date: Date } => r.date !== null)
+
+    const priorPeriod = allWithDates.filter((r) => r.date >= priorFirst && r.date <= priorLast)
+
+    if (priorPeriod.length >= Math.max(3, Math.floor(filteredWithDates.length * 0.5))) {
+      const currentAvg = safeAverage(filteredWithDates.map((r) => r.cases))
+      const priorAvg = safeAverage(priorPeriod.map((r) => r.cases))
+      if (priorAvg === 0) return { value: currentAvg === 0 ? 0 : 100, method: 'yoy' }
+      return { value: ((currentAvg - priorAvg) / Math.abs(priorAvg)) * 100, method: 'yoy' }
+    }
+  }
+
+  // Fallback for datasets without a prior year
+  const cases = realFiltered.map((r) => r.cases)
+  const mid = Math.ceil(cases.length / 2)
+  const firstAvg = safeAverage(cases.slice(0, mid))
+  const secondAvg = safeAverage(cases.slice(mid))
+  if (firstAvg === 0) return { value: secondAvg === 0 ? 0 : 100, method: 'half' }
+  return { value: ((secondAvg - firstAvg) / Math.abs(firstAvg)) * 100, method: 'half' }
 }
 
 const getTrendRows = (profile: ChartDatasetProfile): TrendRow[] => {
@@ -169,6 +204,7 @@ export default function SeriesPage() {
 
   const {
     trendVariation,
+    trendMethod,
     hasDeaths,
     totalPeriods,
     averageCases,
@@ -177,8 +213,10 @@ export default function SeriesPage() {
     latestDelta,
   } = useMemo(() => {
     const cases = realTrendRows.map((row) => row.cases)
+    const trend = variationPercent(realTrendRows, allTrendRows)
     return {
-      trendVariation: variationPercent(cases),
+      trendVariation: trend.value,
+      trendMethod: trend.method,
       hasDeaths: realTrendRows.some((row) => row.deaths > 0),
       totalPeriods: realTrendRows.length,
       averageCases: safeAverage(cases),
@@ -194,7 +232,7 @@ export default function SeriesPage() {
         return ((latest.cases - prev.cases) / prev.cases) * 100
       })(),
     }
-  }, [realTrendRows])
+  }, [realTrendRows, allTrendRows])
 
   const latestDeltaLabel = latestDelta === null ? 'Sem dados' : formatSignedPercent(latestDelta)
   const latestDeltaTone =
@@ -466,7 +504,9 @@ export default function SeriesPage() {
             </strong>
           </div>
           <div>
-            <span className={styles.summaryLabel}>Tendência</span>
+            <span className={styles.summaryLabel}>
+              {trendMethod === 'yoy' ? 'Tendência (ano a ano)' : 'Tendência'}
+            </span>
             <strong
               className={`${styles.summaryValue} ${trendVariation > 0 ? styles.trendUp : trendVariation < 0 ? styles.trendDown : ''}`}
             >

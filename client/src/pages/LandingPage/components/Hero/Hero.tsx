@@ -22,11 +22,6 @@ export function Hero() {
           <Link to="/login" aria-label="Criar conta ou fazer login">
             <Button size="lg">Começar agora</Button>
           </Link>
-          <Link to="/login" aria-label="Fazer login">
-            <Button size="lg" variant="outline">
-              Já tenho conta
-            </Button>
-          </Link>
         </div>
 
         <div className={styles.formats}>

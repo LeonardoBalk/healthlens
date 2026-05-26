@@ -989,6 +989,9 @@ const normalizeProfileForDisplay = (profile: ChartDatasetProfile): ChartDatasetP
 
 const normalizeSinanAge = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
+    // Values 0–120 are already in years (plain age columns)
+    // SINAN encoding is always >= 1000 (e.g. 4025 = 25 years, 2030 = 30 days)
+    if (value >= 0 && value <= 120) return Math.trunc(value)
     const asString = String(Math.trunc(value))
     return normalizeSinanAge(asString)
   }

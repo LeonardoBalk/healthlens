@@ -99,9 +99,6 @@ const buildTrendRows = (
   return { rows, undatedCount }
 }
 
-const PRINT_CHART_WIDTH = 700
-const PRINT_CHART_HEIGHT = 200
-
 export default function ReportsPage() {
   const navigate = useNavigate()
   const { datasets, activeDataset, isLoading, setActiveDataset } = useDatasets()
@@ -379,17 +376,49 @@ export default function ReportsPage() {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          {/* Print chart — fixed dimensions, always rendered, hidden on screen */}
-          <div className={styles.printOnly}>
-            <ComposedChart
-              width={PRINT_CHART_WIDTH}
-              height={PRINT_CHART_HEIGHT}
-              data={trendRows}
-              margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
-            >
-              {chartContent}
-            </ComposedChart>
-          </div>
+          {/* Print table — substitui o gráfico no PDF */}
+          <table className={`${styles.table} ${styles.printOnly}`}>
+            <thead>
+              <tr>
+                <th>Período</th>
+                <th>Casos</th>
+                {hasDeaths && <th>Óbitos</th>}
+                {hasDeaths && <th>Letalidade</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {realTrendRows.map((row) => (
+                <tr key={row.label}>
+                  <td>{row.label}</td>
+                  <td>{formatInteger(row.cases)}</td>
+                  {hasDeaths && <td>{formatInteger(row.deaths)}</td>}
+                  {hasDeaths && (
+                    <td>
+                      {row.cases > 0 ? formatDecimal((row.deaths / row.cases) * 100) : '0,0'}%
+                    </td>
+                  )}
+                </tr>
+              ))}
+              <tr>
+                <td>
+                  <strong>Total</strong>
+                </td>
+                <td>
+                  <strong>{formatInteger(totalCases)}</strong>
+                </td>
+                {hasDeaths && (
+                  <td>
+                    <strong>{formatInteger(totalDeaths)}</strong>
+                  </td>
+                )}
+                {hasDeaths && (
+                  <td>
+                    <strong>{formatDecimal(mortalityRate)}%</strong>
+                  </td>
+                )}
+              </tr>
+            </tbody>
+          </table>
 
           {undatedCount > 0 && (
             <p className={styles.undatedNote}>

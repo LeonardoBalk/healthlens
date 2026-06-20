@@ -297,7 +297,7 @@
   }
 
   .printOnly {
-    display: block !important;
+    display: revert !important;
   }
 
   // ── Cabeçalho do documento ────────────────────────────────────────────────
@@ -362,6 +362,8 @@
   .summaryGrid {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.375rem;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .summaryCard {
@@ -369,6 +371,8 @@
     border: 1px solid #ccc !important;
     background: #fff !important;
     padding: 0.4rem 0.625rem;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .summaryLabel {
@@ -393,12 +397,12 @@
     border: 1px solid #ccc !important;
     background: #fff !important;
     padding: 0.5rem 0.75rem;
-    break-inside: avoid;
-    page-break-inside: avoid;
   }
 
   .cardHeader {
     margin-bottom: 0.375rem;
+    break-after: avoid;
+    page-break-after: avoid;
   }
 
   .cardTitle {
@@ -426,8 +430,6 @@
   .chartBox {
     height: 200px !important;
     min-height: 200px !important;
-    break-inside: avoid;
-    page-break-inside: avoid;
   }
 
   // ── Tabelas ────────────────────────────────────────────────────────────────

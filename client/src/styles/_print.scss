@@ -63,16 +63,24 @@
   // ─── Achata o layout ─────────────────────────────────────────────────────────
   .layout {
     display: block;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
 
   .layout__main {
+    display: block !important;
     width: 100%;
+    overflow: visible !important;
+    height: auto !important;
   }
 
   .layout__content {
+    display: block !important;
     padding: 0 !important;
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
+    flex: none !important;
   }
 }

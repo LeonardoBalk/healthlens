@@ -290,10 +290,11 @@ app.post('/api/chat', chatRateLimit, async (req: Request, res: Response) => {
   const rawHistory = Array.isArray(body.history) ? body.history : []
   const history: ChatHistoryMessage[] = rawHistory
     .filter((msg): msg is Record<string, unknown> => typeof msg === 'object' && msg !== null)
-    .map((msg) => ({
-      role: msg['role'] === 'user' || msg['role'] === 'assistant' ? msg['role'] : 'user',
-      content: typeof msg['content'] === 'string' ? msg['content'] : '',
-    }))
+    .map((msg) => {
+      const role: 'user' | 'assistant' =
+        msg['role'] === 'user' || msg['role'] === 'assistant' ? msg['role'] : 'user'
+      return { role, content: typeof msg['content'] === 'string' ? msg['content'] : '' }
+    })
     .filter((msg) => msg.content.length > 0)
     .slice(-16)
 

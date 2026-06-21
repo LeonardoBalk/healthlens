@@ -434,7 +434,7 @@ export default function SeriesPage() {
                               : formatInteger(item.value as number)
                           return (
                             <p
-                              key={item.dataKey}
+                              key={String(item.dataKey)}
                               className={styles.tooltipRow}
                               style={{ color: item.color }}
                             >

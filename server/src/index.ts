@@ -190,17 +190,18 @@ const chatRateLimit = rateLimit({
 })
 
 // Enable CORS for the frontend origin and allow credentials
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'https://healthlens-client.vercel.app',
+]
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow requests from the local dev server and null (e.g. from some dev tools)
-      const allowed = [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5174',
-        'http://127.0.0.1:5174',
-      ]
-      if (!origin || allowed.includes(origin)) return callback(null, true)
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true)
       return callback(new Error('Not allowed by CORS'))
     },
     credentials: true,

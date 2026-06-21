@@ -1,6 +1,6 @@
 import cors from 'cors'
 import dotenv from 'dotenv'
-import express, { type NextFunction, type Request, type Response } from 'express'
+import express, { type NextFunction, type Request, type Response as ExpressResponse } from 'express'
 import helmet from 'helmet'
 import { rateLimit } from 'express-rate-limit'
 import multer from 'multer'
@@ -212,7 +212,7 @@ app.use(
 app.use(express.json())
 
 // Middleware to extract and validate user from Supabase session
-app.use(async (req: Request, _res: Response, next: NextFunction) => {
+app.use(async (req: Request, _res: ExpressResponse, next: NextFunction) => {
   const typedReq = req as AuthenticatedRequest
   const authHeader = req.headers.authorization
   if (authHeader?.startsWith('Bearer ')) {
@@ -235,7 +235,7 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
-app.get('/api/datasets', async (req: Request, res: Response) => {
+app.get('/api/datasets', async (req: Request, res: ExpressResponse) => {
   try {
     const userId = (req as AuthenticatedRequest).user?.id
     if (!userId) {
@@ -264,7 +264,7 @@ app.get('/api/datasets', async (req: Request, res: Response) => {
   }
 })
 
-app.post('/api/chat', chatRateLimit, async (req: Request, res: Response) => {
+app.post('/api/chat', chatRateLimit, async (req: Request, res: ExpressResponse) => {
   const userId = (req as AuthenticatedRequest).user?.id
   if (!userId) {
     return res.status(401).json({ message: 'Autenticacao necessaria.' })
@@ -347,183 +347,193 @@ app.post('/api/chat', chatRateLimit, async (req: Request, res: Response) => {
   return res.status(500).json({ message: 'Falha ao consultar o Gemini.' })
 })
 
-app.post('/api/datasets/upload', upload.single('file'), async (req: Request, res: Response) => {
-  const uploadedFile = req.file
-  const userId = (req as AuthenticatedRequest).user?.id
+app.post(
+  '/api/datasets/upload',
+  upload.single('file'),
+  async (req: Request, res: ExpressResponse) => {
+    const uploadedFile = req.file
+    const userId = (req as AuthenticatedRequest).user?.id
 
-  if (!uploadedFile) {
-    return res.status(400).json({ message: 'Nenhum arquivo foi enviado.' })
-  }
+    if (!uploadedFile) {
+      return res.status(400).json({ message: 'Nenhum arquivo foi enviado.' })
+    }
 
-  if (!userId) {
-    return res.status(401).json({ message: 'Autenticação necessária.' })
-  }
+    if (!userId) {
+      return res.status(401).json({ message: 'Autenticação necessária.' })
+    }
 
-  const extension = path.extname(uploadedFile.originalname).toLowerCase()
-  if (!ALLOWED_EXTENSIONS.has(extension)) {
-    return res.status(400).json({ message: 'Formato invalido. Use .csv, .json, .xlsx ou .dbc.' })
-  }
+    const extension = path.extname(uploadedFile.originalname).toLowerCase()
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      return res.status(400).json({ message: 'Formato invalido. Use .csv, .json, .xlsx ou .dbc.' })
+    }
 
-  const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'datasets'
-  const datasetId = `ds_${randomUUID()}`
-  const storagePath = `uploads/${datasetId}${extension}`
-  const body = (req.body ?? {}) as Record<string, unknown>
-  const rawName = typeof body['name'] === 'string' ? body['name'].trim() : ''
-  const customName =
-    rawName.length > 0 ? rawName.slice(0, 200) : uploadedFile.originalname.slice(0, 200)
-  const profilePayload: string | null = typeof body['profile'] === 'string' ? body['profile'] : null
-  const mappingPayload: string | null = typeof body['mapping'] === 'string' ? body['mapping'] : null
-  let statsPayload: StatsPayload | null = null
-  let parsedMapping: Record<string, unknown> | null = null
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'datasets'
+    const datasetId = `ds_${randomUUID()}`
+    const storagePath = `uploads/${datasetId}${extension}`
+    const body = (req.body ?? {}) as Record<string, unknown>
+    const rawName = typeof body['name'] === 'string' ? body['name'].trim() : ''
+    const customName =
+      rawName.length > 0 ? rawName.slice(0, 200) : uploadedFile.originalname.slice(0, 200)
+    const profilePayload: string | null =
+      typeof body['profile'] === 'string' ? body['profile'] : null
+    const mappingPayload: string | null =
+      typeof body['mapping'] === 'string' ? body['mapping'] : null
+    let statsPayload: StatsPayload | null = null
+    let parsedMapping: Record<string, unknown> | null = null
 
-  if (mappingPayload) {
-    try {
-      const candidate = parseJsonObject(mappingPayload)
-      if (!candidate) {
+    if (mappingPayload) {
+      try {
+        const candidate = parseJsonObject(mappingPayload)
+        if (!candidate) {
+          return res.status(400).json({ message: 'Mapping invalido.' })
+        }
+
+        const mappedEntries = Object.entries(candidate).filter(
+          ([, value]) => typeof value === 'string' && value.trim() !== ''
+        )
+
+        if (!mappedEntries.length) {
+          return res.status(400).json({ message: 'Mapeie ao menos um campo antes de importar.' })
+        }
+
+        parsedMapping = Object.fromEntries(mappedEntries) as Record<string, string>
+      } catch {
         return res.status(400).json({ message: 'Mapping invalido.' })
       }
-
-      const mappedEntries = Object.entries(candidate).filter(
-        ([, value]) => typeof value === 'string' && value.trim() !== ''
-      )
-
-      if (!mappedEntries.length) {
-        return res.status(400).json({ message: 'Mapeie ao menos um campo antes de importar.' })
-      }
-
-      parsedMapping = Object.fromEntries(mappedEntries) as Record<string, string>
-    } catch {
-      return res.status(400).json({ message: 'Mapping invalido.' })
+    } else {
+      return res.status(400).json({ message: 'Mapeie ao menos um campo antes de importar.' })
     }
-  } else {
-    return res.status(400).json({ message: 'Mapeie ao menos um campo antes de importar.' })
-  }
 
-  if (profilePayload) {
+    if (profilePayload) {
+      try {
+        const parsedProfile = parseJsonObject(profilePayload)
+        if (!parsedProfile) {
+          throw new Error('Invalid profile payload')
+        }
+
+        statsPayload = {
+          preset: 'sinan',
+          profile: parsedProfile,
+          mapping: parsedMapping,
+          fileSizeBytes: uploadedFile.size,
+          originalName: uploadedFile.originalname,
+          mimeType: uploadedFile.mimetype,
+          storagePath,
+          storageBucket: bucket,
+        }
+      } catch {
+        statsPayload = {
+          preset: 'sinan',
+          fileSizeBytes: uploadedFile.size,
+          originalName: uploadedFile.originalname,
+          mimeType: uploadedFile.mimetype,
+          storagePath,
+          storageBucket: bucket,
+        }
+      }
+    }
+
     try {
-      const parsedProfile = parseJsonObject(profilePayload)
-      if (!parsedProfile) {
-        throw new Error('Invalid profile payload')
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(storagePath, uploadedFile.buffer, {
+          contentType: uploadedFile.mimetype,
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError)
+        return res.status(500).json({
+          message: 'Falha ao enviar arquivo para o storage.',
+          error: uploadError.message ?? String(uploadError),
+        })
       }
 
-      statsPayload = {
-        preset: 'sinan',
-        profile: parsedProfile,
-        mapping: parsedMapping,
-        fileSizeBytes: uploadedFile.size,
-        originalName: uploadedFile.originalname,
-        mimeType: uploadedFile.mimetype,
-        storagePath,
-        storageBucket: bucket,
+      // Insert dataset metadata into DB with user_id
+      const insertPayload: DatasetInsert = {
+        user_id: userId,
+        name: customName,
+        description: null,
+        stats_json: (statsPayload ?? null) as Json | null,
+        row_count:
+          statsPayload?.profile && typeof statsPayload.profile.rowCount === 'number'
+            ? Number(statsPayload.profile.rowCount)
+            : null,
+        column_count:
+          statsPayload?.profile && typeof statsPayload.profile.columnCount === 'number'
+            ? Number(statsPayload.profile.columnCount)
+            : null,
       }
-    } catch {
-      statsPayload = {
-        preset: 'sinan',
-        fileSizeBytes: uploadedFile.size,
-        originalName: uploadedFile.originalname,
-        mimeType: uploadedFile.mimetype,
-        storagePath,
-        storageBucket: bucket,
-      }
-    }
-  }
 
-  try {
-    // Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(storagePath, uploadedFile.buffer, {
-        contentType: uploadedFile.mimetype,
-        upsert: false,
+      const { data: inserted, error: insertError } = await supabase
+        .from('datasets')
+        .insert([insertPayload])
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('DB insert error:', insertError)
+        return res.status(500).json({
+          message: 'Falha ao gravar metadados no banco.',
+          error: insertError.message ?? String(insertError),
+        })
+      }
+
+      return res.status(201).json({
+        message: 'Arquivo recebido e persistido com sucesso.',
+        file: {
+          originalName: uploadedFile.originalname,
+          size: uploadedFile.size,
+          mimeType: uploadedFile.mimetype,
+          extension,
+          storagePath,
+        },
+        dataset: inserted ?? null,
       })
-
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError)
+    } catch (err) {
+      console.error('Upload handler error:', err)
       return res.status(500).json({
-        message: 'Falha ao enviar arquivo para o storage.',
-        error: uploadError.message ?? String(uploadError),
+        message: 'Erro ao processar o upload.',
+        error: (err as Error).message ?? String(err),
       })
     }
+  }
+)
 
-    // Insert dataset metadata into DB with user_id
-    const insertPayload: DatasetInsert = {
-      user_id: userId,
-      name: customName,
-      description: null,
-      stats_json: (statsPayload ?? null) as Json | null,
-      row_count:
-        statsPayload?.profile && typeof statsPayload.profile.rowCount === 'number'
-          ? Number(statsPayload.profile.rowCount)
-          : null,
-      column_count:
-        statsPayload?.profile && typeof statsPayload.profile.columnCount === 'number'
-          ? Number(statsPayload.profile.columnCount)
-          : null,
+app.post(
+  '/api/datasets/preview',
+  upload.single('file'),
+  async (req: Request, res: ExpressResponse) => {
+    const uploadedFile = req.file
+    const userId = (req as AuthenticatedRequest).user?.id
+
+    if (!uploadedFile) {
+      return res.status(400).json({ message: 'Nenhum arquivo foi enviado.' })
     }
 
-    const { data: inserted, error: insertError } = await supabase
-      .from('datasets')
-      .insert([insertPayload])
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('DB insert error:', insertError)
-      return res.status(500).json({
-        message: 'Falha ao gravar metadados no banco.',
-        error: insertError.message ?? String(insertError),
-      })
+    if (!userId) {
+      return res.status(401).json({ message: 'Autenticação necessária.' })
     }
 
-    return res.status(201).json({
-      message: 'Arquivo recebido e persistido com sucesso.',
-      file: {
-        originalName: uploadedFile.originalname,
-        size: uploadedFile.size,
-        mimeType: uploadedFile.mimetype,
-        extension,
-        storagePath,
-      },
-      dataset: inserted ?? null,
-    })
-  } catch (err) {
-    console.error('Upload handler error:', err)
-    return res.status(500).json({
-      message: 'Erro ao processar o upload.',
-      error: (err as Error).message ?? String(err),
-    })
+    const extension = path.extname(uploadedFile.originalname).toLowerCase()
+    if (extension !== '.dbc') {
+      return res.status(400).json({ message: 'Formato invalido para pre-visualizacao.' })
+    }
+
+    const rows = await parseDbcBuffer(uploadedFile.buffer)
+    const columns = Array.from(
+      rows.reduce((set, row) => {
+        Object.keys(row).forEach((key) => set.add(key))
+        return set
+      }, new Set<string>())
+    )
+
+    return res.json({ columns, rows })
   }
-})
+)
 
-app.post('/api/datasets/preview', upload.single('file'), async (req: Request, res: Response) => {
-  const uploadedFile = req.file
-  const userId = (req as AuthenticatedRequest).user?.id
-
-  if (!uploadedFile) {
-    return res.status(400).json({ message: 'Nenhum arquivo foi enviado.' })
-  }
-
-  if (!userId) {
-    return res.status(401).json({ message: 'Autenticação necessária.' })
-  }
-
-  const extension = path.extname(uploadedFile.originalname).toLowerCase()
-  if (extension !== '.dbc') {
-    return res.status(400).json({ message: 'Formato invalido para pre-visualizacao.' })
-  }
-
-  const rows = await parseDbcBuffer(uploadedFile.buffer)
-  const columns = Array.from(
-    rows.reduce((set, row) => {
-      Object.keys(row).forEach((key) => set.add(key))
-      return set
-    }, new Set<string>())
-  )
-
-  return res.json({ columns, rows })
-})
-
-app.delete('/api/datasets/:datasetId', async (req: Request, res: Response) => {
+app.delete('/api/datasets/:datasetId', async (req: Request, res: ExpressResponse) => {
   const userId = (req as AuthenticatedRequest).user?.id
   if (!userId) {
     return res.status(401).json({ message: 'Autenticação necessária.' })
@@ -585,7 +595,7 @@ app.delete('/api/datasets/:datasetId', async (req: Request, res: Response) => {
   }
 })
 
-app.get('/api/datasets/:datasetId/file-url', async (req: Request, res: Response) => {
+app.get('/api/datasets/:datasetId/file-url', async (req: Request, res: ExpressResponse) => {
   const userId = (req as AuthenticatedRequest).user?.id
   if (!userId) return res.status(401).json({ message: 'Autenticação necessária.' })
 
@@ -629,7 +639,7 @@ app.get('/api/datasets/:datasetId/file-url', async (req: Request, res: Response)
   }
 })
 
-app.patch('/api/datasets/:datasetId', async (req: Request, res: Response) => {
+app.patch('/api/datasets/:datasetId', async (req: Request, res: ExpressResponse) => {
   const userId = (req as AuthenticatedRequest).user?.id
   if (!userId) return res.status(401).json({ message: 'Autenticação necessária.' })
 
@@ -679,7 +689,7 @@ app.patch('/api/datasets/:datasetId', async (req: Request, res: Response) => {
   }
 })
 
-app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+app.use((error: unknown, _req: Request, res: ExpressResponse, _next: NextFunction) => {
   if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
     return res
       .status(400)

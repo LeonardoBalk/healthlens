@@ -311,10 +311,10 @@ app.post('/api/chat', chatRateLimit, async (req: Request, res: ExpressResponse) 
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const response = await fetch(
+      const response = (await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody }
-      )
+      )) as unknown as { json(): Promise<unknown>; readonly status: number; readonly ok: boolean }
 
       const payload = await response.json().catch(() => null)
 

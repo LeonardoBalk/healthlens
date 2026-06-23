@@ -2,12 +2,10 @@ import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 import type { Database } from './database.types'
 
-// Load environment variables early so this module can be imported at top-level
 dotenv.config()
 
 const supabaseUrl = process.env.SUPABASE_URL ?? ''
-// Prefer the Service Role key on the server for trusted operations.
-// Accept legacy env name `SERVICE_ROLE_KEY` as fallback for local setups.
+
 const supabaseKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   process.env.SERVICE_ROLE_KEY ??

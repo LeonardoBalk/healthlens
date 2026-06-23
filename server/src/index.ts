@@ -189,7 +189,6 @@ const chatRateLimit = rateLimit({
   message: { message: 'Muitas requisições. Tente novamente em instantes.' },
 })
 
-// Enable CORS for the frontend origin and allow credentials
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -451,7 +450,6 @@ app.post(
         })
       }
 
-      // Insert dataset metadata into DB with user_id
       const insertPayload: DatasetInsert = {
         user_id: userId,
         name: customName,

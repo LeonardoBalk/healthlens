@@ -72,12 +72,14 @@ const parseTrendLabel = (label: string): Date | null => {
 
 const GAP_THRESHOLD_MONTHS = 3
 
+const TREND_WINDOW = 3
+
 const variationPercent = (
   filteredRows: TrendRow[],
   allRows: TrendRow[]
-): { value: number; method: 'yoy' | 'half' } => {
+): { value: number; method: 'yoy' | 'recent' } => {
   const realFiltered = filteredRows.filter((r) => r.label !== '')
-  if (realFiltered.length < 2) return { value: 0, method: 'half' }
+  if (realFiltered.length < 2) return { value: 0, method: 'recent' }
 
   const filteredWithDates = realFiltered
     .map((r) => ({ cases: r.cases, date: parseTrendLabel(r.label) }))
@@ -107,13 +109,12 @@ const variationPercent = (
     }
   }
 
-  // Fallback for datasets without a prior year
+  // Compare last TREND_WINDOW periods against the previous TREND_WINDOW periods
   const cases = realFiltered.map((r) => r.cases)
-  const mid = Math.ceil(cases.length / 2)
-  const firstAvg = safeAverage(cases.slice(0, mid))
-  const secondAvg = safeAverage(cases.slice(mid))
-  if (firstAvg === 0) return { value: secondAvg === 0 ? 0 : 100, method: 'half' }
-  return { value: ((secondAvg - firstAvg) / Math.abs(firstAvg)) * 100, method: 'half' }
+  const recentAvg = safeAverage(cases.slice(-TREND_WINDOW))
+  const previousAvg = safeAverage(cases.slice(-TREND_WINDOW * 2, -TREND_WINDOW))
+  if (previousAvg === 0) return { value: recentAvg === 0 ? 0 : 100, method: 'recent' }
+  return { value: ((recentAvg - previousAvg) / Math.abs(previousAvg)) * 100, method: 'recent' }
 }
 
 const getTrendRows = (profile: ChartDatasetProfile): TrendRow[] => {
@@ -505,7 +506,7 @@ export default function SeriesPage() {
           </div>
           <div>
             <span className={styles.summaryLabel}>
-              {trendMethod === 'yoy' ? 'Tendência (ano a ano)' : 'Tendência'}
+              {trendMethod === 'yoy' ? 'Tendência (ano a ano)' : 'Tendência (recente)'}
             </span>
             <strong
               className={`${styles.summaryValue} ${trendVariation > 0 ? styles.trendUp : trendVariation < 0 ? styles.trendDown : ''}`}

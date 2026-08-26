@@ -231,8 +231,9 @@ app.use(async (req: Request, _res: ExpressResponse, next: NextFunction) => {
   next()
 })
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' })
+app.get('/api/health', async (_req, res) => {
+  const { error } = await supabase.from('datasets').select('id').limit(1)
+  res.json({ status: 'ok', db: !error })
 })
 
 app.get('/api/datasets', async (req: Request, res: ExpressResponse) => {
